@@ -868,6 +868,7 @@ let modalJogoAtual = null;
 function loading(show){ document.getElementById('loadingOverlay').style.display = show?'flex':'none'; }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function formatDate(iso){ if(!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
 
 // ── Ir para o início ao clicar no logo ──
 window.goHome = function(){
@@ -977,43 +978,54 @@ window.doLogout = async function(){
 // ── AUTH STATE ──
 onAuthStateChanged(auth, async user => {
   loading(true);
-  if(user){
-    currentUID = user.uid;
-    const snap = await getDoc(doc(db,'usuarios',user.uid));
-    if(!snap.exists()){ await signOut(auth); loading(false); return; }
-    currentUser = { uid:user.uid, ...snap.data() };
-    await loadCaches();
-    document.getElementById('screenAuth').classList.remove('active');
-    document.getElementById('screenMain').classList.add('active');
-    const initials = currentUser.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
-    document.getElementById('topAvatar').textContent  = initials;
-    document.getElementById('topUserName').textContent = currentUser.nomeApresentacao || currentUser.nome.split(' ')[0];
-    if(currentUser.tipo==='Membro'){
-      document.getElementById('memberArea').style.display='flex';
-      document.getElementById('gerenteArea').style.display='none';
-      initMemberPage();
+  try {
+    if(user){
+      currentUID = user.uid;
+      const snap = await getDoc(doc(db,'usuarios',user.uid));
+      if(!snap.exists()){ await signOut(auth); loading(false); return; }
+      currentUser = { uid:user.uid, ...snap.data() };
+      await loadCaches();
+      document.getElementById('screenAuth').classList.remove('active');
+      document.getElementById('screenMain').classList.add('active');
+      const initials = currentUser.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
+      document.getElementById('topAvatar').textContent  = initials;
+      document.getElementById('topUserName').textContent = currentUser.nomeApresentacao || currentUser.nome.split(' ')[0];
+      if(currentUser.tipo==='Membro'){
+        document.getElementById('memberArea').style.display='flex';
+        document.getElementById('gerenteArea').style.display='none';
+        await initMemberPage();
+      } else {
+        document.getElementById('gerenteArea').style.display='flex';
+        document.getElementById('memberArea').style.display='none';
+        await initGerentePage();
+      }
     } else {
-      document.getElementById('gerenteArea').style.display='flex';
-      document.getElementById('memberArea').style.display='none';
-      initGerentePage();
+      document.getElementById('screenAuth').classList.add('active');
+      document.getElementById('screenMain').classList.remove('active');
     }
-  } else {
-    document.getElementById('screenAuth').classList.add('active');
-    document.getElementById('screenMain').classList.remove('active');
+  } catch(e) {
+    console.error('Auth/init error:', e);
+    showToast('❌ Erro ao carregar: ' + e.message);
   }
   loading(false);
 });
 
 // ── CACHES ──
 async function loadCaches(){
-  const [usSnap, jSnap, pSnap] = await Promise.all([
+  const [usSnap, jSnap] = await Promise.all([
     getDocs(collection(db,'usuarios')),
-    getDocs(collection(db,'jogos')),
-    getDocs(collection(db,'periodos'))
+    getDocs(collection(db,'jogos'))
   ]);
-  allUsers   = usSnap.docs.map(d=>({uid:d.id,...d.data()}));
-  allJogos   = jSnap.docs.map(d=>({id:d.id,...d.data()}));
-  allPeriodos= pSnap.docs.map(d=>({id:d.id,...d.data()}));
+  allUsers = usSnap.docs.map(d=>({uid:d.id,...d.data()}));
+  allJogos = jSnap.docs.map(d=>({id:d.id,...d.data()}));
+  // periodos loaded separately — won't block login if rules not yet set
+  try {
+    const pSnap = await getDocs(collection(db,'periodos'));
+    allPeriodos = pSnap.docs.map(d=>({id:d.id,...d.data()}));
+  } catch(e) {
+    console.warn('periodos not accessible yet:', e.message);
+    allPeriodos = [];
+  }
 }
 
 // ════════════════════════════════
@@ -1679,11 +1691,6 @@ async function renderPeriodosGerente(){
   }).join('');
 }
 
-function formatDate(iso){
-  if(!iso) return '—';
-  const [y,m,d]=iso.split('-');
-  return `${d}/${m}/${y}`;
-}
 
 window.openModalNovoPeriodo = function(){
   document.getElementById('periodoEditId').value='';
@@ -2377,17 +2384,6 @@ window.carregarInfoDiaMembro = async function(){
   }
 };
 
-let _taxaSelecionada = 15;
-window.selecionarTaxa = function(v){
-  _taxaSelecionada = v;
-  const o1 = document.getElementById('taxaOpt1');
-  const o2 = document.getElementById('taxaOpt2');
-  if(o1) o1.style.borderColor = 'transparent';
-  if(o2) o2.style.borderColor = 'transparent';
-  // destaca o card clicado comparando o onclick
-  if(o1 && o1.getAttribute('onclick')?.includes(String(v))) o1.style.borderColor = 'var(--or)';
-  if(o2 && o2.getAttribute('onclick')?.includes(String(v))) o2.style.borderColor = 'var(--or)';
-};
 
 window.membroConfirmaPresenca = async function(jogoId, confirmado){
   loading(true);
