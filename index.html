@@ -237,6 +237,10 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <label class="form-label">Nome completo *</label>
         <input class="form-control" id="cNome" placeholder="Seu nome completo">
       </div>
+      <div class="form-group">
+        <label class="form-label">Nome de apresentação *</label>
+        <input class="form-control" id="cNomeApresentacao" placeholder="Como quer ser chamado(a)? Ex: Yami">
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">CPF *</label>
@@ -525,10 +529,10 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
 
 <div class="modal-overlay" id="modalDupla">
   <div class="modal">
-    <div class="modal-title">👥 Nova dupla / quarteto</div>
+    <div class="modal-title">👥 Nova dupla</div>
     <div class="form-group">
-      <label class="form-label">Nome da dupla/quarteto</label>
-      <input class="form-control" id="duplaNome" placeholder="Ex: Quarteto Campeão">
+      <label class="form-label">Nome da dupla</label>
+      <input class="form-control" id="duplaNome" placeholder="Ex: Dupla Campeã">
     </div>
     <div class="form-group">
       <label class="form-label">Parceiro(a)</label>
@@ -536,7 +540,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
     </div>
     <div class="modal-actions">
       <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalDupla')">Cancelar</button>
-      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarDupla()">Criar</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarDupla()">Criar dupla</button>
     </div>
   </div>
 </div>
@@ -678,6 +682,7 @@ window.doCadastro = async function(){
   const errEl = document.getElementById('cadastroError');
   errEl.style.display='none';
   const nome      = document.getElementById('cNome').value.trim();
+  const nomeApres = document.getElementById('cNomeApresentacao').value.trim();
   const cpf       = document.getElementById('cCpf').value.trim();
   const nasc      = document.getElementById('cNascimento').value;
   const tel       = document.getElementById('cTelefone').value.trim();
@@ -690,7 +695,7 @@ window.doCadastro = async function(){
   const senha     = document.getElementById('cSenha').value;
   const senha2    = document.getElementById('cSenha2').value;
 
-  if(!nome||!cpf||!nasc||!tel||!nivel||!eNome||!eTel||!conheceu||!email||!senha){
+  if(!nome||!nomeApres||!cpf||!nasc||!tel||!nivel||!eNome||!eTel||!conheceu||!email||!senha){
     errEl.textContent='Preencha todos os campos obrigatórios (*).'; errEl.style.display='block'; return;
   }
   if(senha!==senha2){ errEl.textContent='As senhas não conferem.'; errEl.style.display='block'; return; }
@@ -701,7 +706,7 @@ window.doCadastro = async function(){
     const cred = await createUserWithEmailAndPassword(auth, email, senha);
     const uid  = cred.user.uid;
     await setDoc(doc(db,'usuarios',uid),{
-      nome, cpf, dataNascimento:nasc, telefone:tel, nivel, status:'Ativo',
+      nome, nomeApresentacao:nomeApres, cpf, dataNascimento:nasc, telefone:tel, nivel, status:'Ativo',
       emergenciaNome:eNome, emergenciaTel:eTel, doenca:doenca||'Nenhuma',
       comoConheceu:conheceu, email, tipo:'Membro',
       criadoEm: serverTimestamp()
@@ -737,7 +742,7 @@ onAuthStateChanged(auth, async user => {
     document.getElementById('screenMain').classList.add('active');
     const initials = currentUser.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
     document.getElementById('topAvatar').textContent  = initials;
-    document.getElementById('topUserName').textContent = currentUser.nome.split(' ')[0];
+    document.getElementById('topUserName').textContent = currentUser.nomeApresentacao || currentUser.nome.split(' ')[0];
     if(currentUser.tipo==='Membro'){
       document.getElementById('memberArea').style.display='flex';
       document.getElementById('gerenteArea').style.display='none';
@@ -781,7 +786,7 @@ async function initMemberPage(){
   let totalMes = 0;
   inscricoes.forEach(i=>{ if(i.status==='Aprovado'){ const j=allJogos.find(x=>x.id===i.jogoId); if(j&&j.mesAno===mesAno) totalMes+=Number(j.valor||0); } });
 
-  document.getElementById('welcomeName').textContent  = 'Olá, '+currentUser.nome.split(' ')[0]+'! 👋';
+  document.getElementById('welcomeName').textContent  = 'Olá, '+(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])+'! 👋';
   document.getElementById('welcomeLevel').textContent = 'Nível: '+currentUser.nivel;
   document.getElementById('wbJogos').textContent      = jogosNivel.length;
   document.getElementById('wbDuplas').textContent     = duplas.length;
@@ -823,31 +828,93 @@ function renderJogosMember(inscricoes){
   }).join('');
 }
 
-window.abrirInscricao = function(jogoId){
+window.abrirInscricao = async function(jogoId){
   const jogo = allJogos.find(j=>j.id===jogoId);
   modalJogoAtual = jogo;
+  let extraHtml = '';
+  if(jogo.tipo==='Dupla'){
+    // busca duplas do membro atual
+    const dupSnap = await getDocs(query(collection(db,'duplas'),where('membros','array-contains',currentUID),where('status','==','Ativa')));
+    const duplas  = dupSnap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!duplas.length){
+      extraHtml = `<div style="background:#FEEEEE;color:#A32D2D;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:10px">
+        ⚠️ Você não tem duplas ativas cadastradas. Vá em <strong>Duplas</strong> e cadastre uma dupla antes de se inscrever neste jogo.
+      </div>`;
+    } else {
+      const opts = duplas.map(d=>{
+        const parceiro = d.membros.find(uid=>uid!==currentUID);
+        const uParceiro = allUsers.find(u=>u.uid===parceiro);
+        const nomeParceiro = uParceiro ? (uParceiro.nomeApresentacao||uParceiro.nome.split(' ')[0]) : '?';
+        return `<option value="${d.id}" data-parceiro="${parceiro}">${d.nome} (com ${nomeParceiro})</option>`;
+      }).join('');
+      extraHtml = `<div class="form-group" style="margin-bottom:10px">
+        <label class="form-label" style="font-size:12px;color:var(--tx2)">Selecionar dupla</label>
+        <select class="form-control" id="modalDuplaSelect">${opts}</select>
+      </div>
+      <div style="background:#E6F7EF;color:#0F6E56;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px">
+        ✅ A inscrição e o valor serão registrados para <strong>ambos os membros</strong> da dupla.
+      </div>`;
+    }
+  }
   document.getElementById('modalInscricaoContent').innerHTML=`
     <div class="card" style="background:var(--sur2);margin-bottom:12px">
       <div class="card-title">${jogo.nome}</div>
       <div class="card-sub">${jogo.dia}${jogo.mesAno?' · '+jogo.mesAno:''} · ${jogo.tipo} · ${jogo.nivel}</div>
-      <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</span></div>
+      <div class="valor-box"><span class="valor-label">Valor por pessoa</span><span class="valor-num">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</span></div>
     </div>
+    ${extraHtml}
     <p style="font-size:12px;color:var(--tx2);line-height:1.5">Sua inscrição ficará como <strong>Pendente</strong> até ser aprovada pelo gerente.</p>`;
   document.getElementById('modalInscricao').classList.add('open');
 };
 
 window.confirmarInscricao = async function(){
   loading(true);
-  const snap = await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID),where('jogoId','==',modalJogoAtual.id)));
-  if(!snap.empty){ closeModal('modalInscricao'); loading(false); showToast('⚠️ Você já está inscrito neste jogo!'); return; }
-  await addDoc(collection(db,'inscricoes'),{
-    usuarioId:currentUID, usuarioNome:currentUser.nome,
-    jogoId:modalJogoAtual.id, jogoNome:modalJogoAtual.nome,
-    jogoMesAno:modalJogoAtual.mesAno||'', jogoValor:Number(modalJogoAtual.valor||0),
-    status:'Pendente', criadoEm:serverTimestamp()
-  });
-  closeModal('modalInscricao'); loading(false);
-  showToast('✅ Inscrição enviada! Aguardando aprovação.');
+  const jogo = modalJogoAtual;
+
+  if(jogo.tipo==='Dupla'){
+    const sel = document.getElementById('modalDuplaSelect');
+    if(!sel){ closeModal('modalInscricao'); loading(false); showToast('⚠️ Cadastre uma dupla primeiro!'); return; }
+    const duplaId   = sel.value;
+    const parceiroId = sel.selectedOptions[0].dataset.parceiro;
+    const parceiro   = allUsers.find(u=>u.uid===parceiroId);
+
+    // verifica se já existe inscrição para o membro atual
+    const snapAtual = await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID),where('jogoId','==',jogo.id)));
+    if(!snapAtual.empty){ closeModal('modalInscricao'); loading(false); showToast('⚠️ Você já está inscrito neste jogo!'); return; }
+
+    const base = {
+      jogoId:jogo.id, jogoNome:jogo.nome, jogoMesAno:jogo.mesAno||'',
+      jogoValor:Number(jogo.valor||0), jogoTipo:jogo.tipo,
+      duplaId, status:'Pendente', criadoEm:serverTimestamp()
+    };
+    // grava para o membro atual
+    await addDoc(collection(db,'inscricoes'),{
+      ...base, usuarioId:currentUID, usuarioNome:currentUser.nome,
+      parceiroId, parceiroNome:parceiro?parceiro.nome:''
+    });
+    // grava para o parceiro (se não tiver inscrição ainda)
+    const snapParceiro = await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',parceiroId),where('jogoId','==',jogo.id)));
+    if(snapParceiro.empty){
+      await addDoc(collection(db,'inscricoes'),{
+        ...base, usuarioId:parceiroId, usuarioNome:parceiro?parceiro.nome:'',
+        parceiroId:currentUID, parceiroNome:currentUser.nome
+      });
+    }
+    closeModal('modalInscricao'); loading(false);
+    showToast('✅ Inscrição enviada para a dupla! Aguardando aprovação.');
+  } else {
+    // Quarteto — inscrição individual
+    const snap = await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID),where('jogoId','==',jogo.id)));
+    if(!snap.empty){ closeModal('modalInscricao'); loading(false); showToast('⚠️ Você já está inscrito neste jogo!'); return; }
+    await addDoc(collection(db,'inscricoes'),{
+      usuarioId:currentUID, usuarioNome:currentUser.nome,
+      jogoId:jogo.id, jogoNome:jogo.nome, jogoMesAno:jogo.mesAno||'',
+      jogoValor:Number(jogo.valor||0), jogoTipo:jogo.tipo,
+      status:'Pendente', criadoEm:serverTimestamp()
+    });
+    closeModal('modalInscricao'); loading(false);
+    showToast('✅ Inscrição enviada! Aguardando aprovação.');
+  }
   await initMemberPage();
 };
 
@@ -859,9 +926,15 @@ async function renderMinhasInscricoes(inscricoes){
   document.getElementById('totalMesInscricoes').textContent='R$ '+total.toFixed(2).replace('.',',');
   el.innerHTML=inscricoes.map(i=>{
     const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
+    const parceiroInfo = i.jogoTipo==='Dupla'&&i.parceiroNome
+      ? `<div style="font-size:11px;color:var(--tx2);margin-top:3px">👥 Dupla com ${i.parceiroNome.split(' ')[0]}</div>` : '';
     return `<div class="card">
       <div class="card-row">
-        <div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div></div>
+        <div>
+          <div class="card-title">${i.jogoNome}</div>
+          <div class="card-sub">${i.jogoMesAno||''}</div>
+          ${parceiroInfo}
+        </div>
         <span class="badge ${bc}">${i.status}</span>
       </div>
       <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div>
@@ -905,7 +978,11 @@ function renderPerfil(){
   document.getElementById('perfilCard').innerHTML=`
     <div style="display:flex;align-items:center;gap:13px;margin-bottom:14px">
       <div class="avatar" style="width:50px;height:50px;font-size:17px;flex-shrink:0">${currentUser.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-      <div><div class="card-title" style="font-size:16px">${currentUser.nome}</div><div class="card-sub">${currentUser.email}</div></div>
+      <div>
+        <div class="card-title" style="font-size:16px">${currentUser.nome}</div>
+        <div class="card-sub" style="color:var(--or);font-weight:500">${currentUser.nomeApresentacao||''}</div>
+        <div class="card-sub">${currentUser.email}</div>
+      </div>
     </div>
     <hr>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
@@ -935,7 +1012,7 @@ window.memberPage = function(pageId, btn){
 // GERENTE / COORDENADOR
 // ════════════════════════════════
 async function initGerentePage(){
-  document.getElementById('welcomeNameG').textContent='Olá, '+currentUser.nome.split(' ')[0]+'! 👋';
+  document.getElementById('welcomeNameG').textContent='Olá, '+(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])+'! 👋';
   document.getElementById('welcomeRoleG').textContent='Área Administrativa · '+currentUser.tipo;
   await renderGerenteHome();
   await renderInscricoesPend();
