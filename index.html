@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calango Vôlei Clube</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+:root {
+  --orange: #E07020;
+  --orange-dark: #c55c10;
+  --green-dark: #1a3a28;
+  --green-mid: #2E7D52;
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0eeea;
+  --text: #1a1a1a;
+  --text2: #666;
+  --border: rgba(0,0,0,0.1);
+}
+html, body { height: 100%; background: var(--bg); }
+.app { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+.screen { display: none; flex-direction: column; flex: 1; }
+.screen.active { display: flex; }
+
+/* LOGIN */
+.login-screen { background: var(--green-dark); align-items: center; justify-content: center; padding: 32px 24px; }
+.login-logo { width: 80px; height: 80px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 16px; }
+.login-title { color: #fff; font-size: 24px; font-weight: 600; margin-bottom: 4px; text-align: center; }
+.login-sub { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 32px; text-align: center; }
+.login-card { background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 360px; }
+.login-label { font-size: 13px; color: var(--text2); margin-bottom: 8px; display: block; font-weight: 500; }
+.login-card select { width: 100%; margin-bottom: 16px; padding: 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; color: var(--text); background: #fff; cursor: pointer; }
+.btn-primary { width: 100%; padding: 13px; background: var(--orange); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-primary:hover { background: var(--orange-dark); }
+.login-hint { font-size: 12px; color: #999; margin-top: 14px; text-align: center; }
+
+/* TOPBAR */
+.topbar { background: var(--green-dark); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
+.topbar-logo { display: flex; align-items: center; gap: 10px; }
+.topbar-ball { width: 32px; height: 32px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.topbar-name { color: #fff; font-size: 16px; font-weight: 600; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.topbar-user { color: rgba(255,255,255,0.7); font-size: 13px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; }
+.btn-logout { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); font-size: 12px; padding: 5px 12px; border-radius: 8px; cursor: pointer; }
+.btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+/* CONTENT */
+.content { flex: 1; overflow-y: auto; padding: 16px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* BOTTOM NAV */
+.bottomnav { background: var(--green-dark); display: flex; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+.bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 8px; background: none; border: none; color: rgba(255,255,255,0.45); font-size: 10px; font-weight: 500; cursor: pointer; transition: color 0.15s; }
+.bnav-btn i { font-size: 22px; }
+.bnav-btn.active { color: var(--orange); }
+.bnav-btn:hover:not(.active) { color: rgba(255,255,255,0.75); }
+
+/* WELCOME BANNER */
+.welcome-banner { background: var(--green-dark); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+.welcome-name { color: #fff; font-size: 18px; font-weight: 600; }
+.welcome-level { color: rgba(255,255,255,0.65); font-size: 13px; margin-top: 3px; }
+.welcome-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.welcome-badge { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); font-size: 12px; padding: 4px 12px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+
+/* SECTION */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-size: 16px; font-weight: 600; color: var(--text); }
+
+/* CARDS */
+.card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; }
+.card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.card-sub { font-size: 13px; color: var(--text2); }
+.card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-green { background: #E6F7EF; color: #0F6E56; }
+.badge-amber { background: #FFF3DC; color: #854F0B; }
+.badge-red { background: #FEEEEE; color: #A32D2D; }
+.badge-blue { background: #E8F3FE; color: #185FA5; }
+.badge-gray { background: #F0EEEA; color: #666; }
+.badge-orange { background: #FEF0E6; color: #E07020; }
+
+/* BUTTONS */
+.btn-sm { padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s; }
+.btn-sm:hover { background: var(--surface2); }
+.btn-sm.primary { background: var(--orange); color: #fff; border-color: var(--orange); }
+.btn-sm.primary:hover { background: var(--orange-dark); }
+.btn-sm.success { background: #E6F7EF; color: #0F6E56; border-color: #9FE1CB; }
+.btn-sm.success:hover { background: #C0EDD8; }
+.btn-sm.danger { background: #FEEEEE; color: #A32D2D; border-color: #F7C1C1; }
+.btn-sm.danger:hover { background: #F7C1C1; }
+
+.btn-action { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); margin-bottom: 10px; width: 100%; text-align: left; transition: background 0.15s; }
+.btn-action:hover { background: var(--surface2); }
+.btn-action-icon { width: 40px; height: 40px; border-radius: 10px; background: #FEF0E6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.btn-action-icon i { font-size: 20px; color: var(--orange); }
+.btn-action-text { flex: 1; }
+.btn-action-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.btn-action-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* STATS */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.stat-card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 14px 10px; text-align: center; }
+.stat-num { font-size: 26px; font-weight: 700; color: var(--text); }
+.stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* FORM */
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 500; }
+.form-control { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; color: var(--text); background: var(--surface); }
+.form-control:focus { outline: 2px solid var(--orange); border-color: var(--orange); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 16px; padding: 22px; width: 100%; max-width: 360px; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-actions button { flex: 1; padding: 11px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a3a28; color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; }
+.toast.show { opacity: 1; }
+
+/* EMPTY */
+.empty { text-align: center; padding: 40px 16px; color: var(--text2); }
+.empty i { font-size: 40px; margin-bottom: 10px; display: block; opacity: 0.4; }
+.empty-msg { font-size: 14px; line-height: 1.5; }
+
+/* DENIED */
+.denied-screen { background: var(--green-dark); align-items: center; justify-content: center; padding: 32px 24px; text-align: center; }
+.denied-icon { font-size: 64px; margin-bottom: 16px; }
+.denied-title { color: #fff; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.denied-sub { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 24px; }
+
+hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+@media (min-width: 430px) {
+  .app { box-shadow: 0 0 40px rgba(0,0,0,0.12); }
+  body { display: flex; align-items: flex-start; justify-content: center; padding: 20px 0; }
+  html { background: #e8e4dc; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- ===== LOGIN ===== -->
+<div class="screen active login-screen" id="screenLogin">
+  <div class="login-logo">🏐</div>
+  <div class="login-title">Calango Vôlei Clube</div>
+  <div class="login-sub">Sistema de Gestão de Membros</div>
+  <div class="login-card">
+    <label class="login-label">Selecione seu perfil</label>
+    <select id="loginSelect">
+      <option value="">— Selecione um usuário —</option>
+      <option value="ana">Ana Souza · Membro (Intermediário)</option>
+      <option value="joao">João Lima · Membro (Iniciante)</option>
+      <option value="carla">Carla Mendes · Membro (Avançado)</option>
+      <option value="gerente">Ricardo Santos · Gerente</option>
+    </select>
+    <button class="btn-primary" onclick="doLogin()">Entrar no App</button>
+    <div class="login-hint">⚡ Versão demonstração — nenhuma senha necessária</div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div class="screen" id="screenMain">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-ball">🏐</div>
+      <span class="topbar-name">Calango Vôlei</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-user" id="topUserName"></span>
+      <div class="avatar" id="topAvatar"></div>
+      <button class="btn-logout" onclick="doLogout()">Sair</button>
+    </div>
+  </div>
+
+  <!-- MEMBER AREA -->
+  <div id="memberArea" style="display:none; flex:1; display:none; flex-direction:column;">
+
+    <div class="content" id="memberContent">
+
+      <!-- HOME -->
+      <div class="page active" id="pageMemberHome">
+        <div class="welcome-banner">
+          <div class="welcome-name" id="welcomeName"></div>
+          <div class="welcome-level" id="welcomeLevel"></div>
+          <div class="welcome-badges">
+            <span class="welcome-badge">🏐 <span id="wbJogos"></span> jogos disponíveis</span>
+            <span class="welcome-badge">👥 <span id="wbDuplas"></span> duplas</span>
+            <span class="welcome-badge">✅ <span id="wbInscricoes"></span> inscrições</span>
+          </div>
+        </div>
+        <div class="section-header">
+          <div class="section-title">Jogos para o seu nível</div>
+          <span class="badge badge-green" id="badgeJogosCount"></span>
+        </div>
+        <div id="jogosListMember"></div>
+      </div>
+
+      <!-- INSCRIÇÕES -->
+      <div class="page" id="pageMemberInscricoes">
+        <div class="section-header">
+          <div class="section-title">Minhas Inscrições</div>
+        </div>
+        <div id="minhasInscricoesList"></div>
+      </div>
+
+      <!-- DUPLAS -->
+      <div class="page" id="pageMemberDuplas">
+        <div class="section-header">
+          <div class="section-title">Minhas Duplas</div>
+          <button class="btn-sm primary" onclick="openModalDupla()">
+            <i class="ti ti-plus"></i> Nova dupla
+          </button>
+        </div>
+        <div id="minhasDuplasList"></div>
+      </div>
+
+      <!-- PERFIL -->
+      <div class="page" id="pageMemberPerfil">
+        <div class="section-header">
+          <div class="section-title">Meu Perfil</div>
+        </div>
+        <div class="card" id="perfilCard"></div>
+        <br>
+        <div class="section-title" style="margin-bottom:12px; font-size:15px">Solicitar mudança de nível</div>
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Nível desejado</label>
+            <select class="form-control" id="selectNovoNivel">
+              <option value="Iniciante">Iniciante</option>
+              <option value="Intermediário">Intermediário</option>
+              <option value="Avançado">Avançado</option>
+            </select>
+          </div>
+          <button class="btn-sm primary" style="width:100%; justify-content:center" onclick="solicitarNivel()">
+            <i class="ti ti-send"></i> Enviar solicitação
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MEMBER NAV -->
+    <div class="bottomnav" id="memberNav">
+      <button class="bnav-btn active" onclick="memberPage('pageMemberHome', this)">
+        <i class="ti ti-home"></i>Início
+      </button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberInscricoes', this)">
+        <i class="ti ti-calendar-check"></i>Inscrições
+      </button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberDuplas', this)">
+        <i class="ti ti-users"></i>Duplas
+      </button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberPerfil', this)">
+        <i class="ti ti-user"></i>Perfil
+      </button>
+    </div>
+  </div>
+
+  <!-- GERENTE AREA -->
+  <div id="gerenteArea" style="display:none; flex:1; flex-direction:column;">
+
+    <div class="content" id="gerenteContent">
+
+      <!-- HOME GERENTE -->
+      <div class="page active" id="pageGerenteHome">
+        <div class="welcome-banner">
+          <div class="welcome-name" id="welcomeNameGerente"></div>
+          <div class="welcome-level">Área Administrativa · Gerente</div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-num" id="statMembros">0</div>
+            <div class="stat-label">Membros</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="statPend">0</div>
+            <div class="stat-label">Pendentes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="statJogos">0</div>
+            <div class="stat-label">Jogos</div>
+          </div>
+        </div>
+
+        <button class="btn-action" onclick="gerentePage('pageGerenteInscricoes', document.querySelectorAll('#gerenteNav .bnav-btn')[1])">
+          <div class="btn-action-icon"><i class="ti ti-clipboard-check"></i></div>
+          <div class="btn-action-text">
+            <div class="btn-action-title">Aprovar Inscrições</div>
+            <div class="btn-action-sub" id="hintInscricoes">—</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#ccc"></i>
+        </button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteNivel', document.querySelectorAll('#gerenteNav .bnav-btn')[2])">
+          <div class="btn-action-icon"><i class="ti ti-chart-arrows-vertical"></i></div>
+          <div class="btn-action-text">
+            <div class="btn-action-title">Solicitações de Nível</div>
+            <div class="btn-action-sub" id="hintNivel">—</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#ccc"></i>
+        </button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteJogos', document.querySelectorAll('#gerenteNav .bnav-btn')[3])">
+          <div class="btn-action-icon"><i class="ti ti-calendar-plus"></i></div>
+          <div class="btn-action-text">
+            <div class="btn-action-title">Configurar Jogos</div>
+            <div class="btn-action-sub">Gerenciar calendário</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#ccc"></i>
+        </button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios', document.querySelectorAll('#gerenteNav .bnav-btn')[4])">
+          <div class="btn-action-icon"><i class="ti ti-users"></i></div>
+          <div class="btn-action-text">
+            <div class="btn-action-title">Gerenciar Membros</div>
+            <div class="btn-action-sub" id="hintMembros">—</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:#ccc"></i>
+        </button>
+      </div>
+
+      <!-- INSCRIÇÕES GERENTE -->
+      <div class="page" id="pageGerenteInscricoes">
+        <div class="section-header">
+          <div class="section-title">Inscrições Pendentes</div>
+        </div>
+        <div id="inscricoesPendList"></div>
+      </div>
+
+      <!-- NÍVEL GERENTE -->
+      <div class="page" id="pageGerenteNivel">
+        <div class="section-header">
+          <div class="section-title">Solicitações de Nível</div>
+        </div>
+        <div id="nivelSolicList"></div>
+      </div>
+
+      <!-- JOGOS GERENTE -->
+      <div class="page" id="pageGerenteJogos">
+        <div class="section-header">
+          <div class="section-title">Configurar Jogos</div>
+          <button class="btn-sm primary" onclick="openModalNovoJogo()">
+            <i class="ti ti-plus"></i> Novo jogo
+          </button>
+        </div>
+        <div id="jogosGerenteList"></div>
+      </div>
+
+      <!-- USUÁRIOS GERENTE -->
+      <div class="page" id="pageGerenteUsuarios">
+        <div class="section-header">
+          <div class="section-title">Membros Cadastrados</div>
+        </div>
+        <div id="usuariosGerenteList"></div>
+      </div>
+
+    </div>
+
+    <!-- GERENTE NAV -->
+    <div class="bottomnav" id="gerenteNav">
+      <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome', this)">
+        <i class="ti ti-home"></i>Início
+      </button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteInscricoes', this)">
+        <i class="ti ti-clipboard-check"></i>Inscrições
+      </button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteNivel', this)">
+        <i class="ti ti-chart-arrows-vertical"></i>Nível
+      </button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos', this)">
+        <i class="ti ti-calendar"></i>Jogos
+      </button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios', this)">
+        <i class="ti ti-users"></i>Membros
+      </button>
+    </div>
+  </div>
+
+</div><!-- screenMain -->
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="modalInscricao">
+  <div class="modal">
+    <div class="modal-title">🏐 Inscrição no Jogo</div>
+    <div id="modalInscricaoContent"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalInscricao')">Cancelar</button>
+      <button class="btn-sm primary" style="flex:1;justify-content:center" onclick="confirmarInscricao()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalDupla">
+  <div class="modal">
+    <div class="modal-title">👥 Criar Nova Dupla</div>
+    <div class="form-group">
+      <label class="form-label">Nome da dupla</label>
+      <input class="form-control" id="duplaNome" placeholder="Ex: Dupla Campeã">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Escolher parceiro(a)</label>
+      <select class="form-control" id="duplaJogador2">
+        <option value="">Selecione...</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalDupla')">Cancelar</button>
+      <button class="btn-sm primary" style="flex:1;justify-content:center" onclick="confirmarDupla()">Criar dupla</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalNovoJogo">
+  <div class="modal">
+    <div class="modal-title">📅 Configurar Novo Jogo</div>
+    <div class="form-group">
+      <label class="form-label">Nome do jogo</label>
+      <input class="form-control" id="jogoNome" placeholder="Ex: Treino das Terças">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dia da semana</label>
+      <select class="form-control" id="jogoDia">
+        <option>Segunda</option><option>Terça</option><option>Quarta</option>
+        <option>Quinta</option><option>Sexta</option><option>Sábado</option><option>Domingo</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de jogo</label>
+      <select class="form-control" id="jogoTipo">
+        <option>Individual</option>
+        <option>Dupla</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nível</label>
+      <select class="form-control" id="jogoNivel">
+        <option>Iniciante</option>
+        <option>Intermediário</option>
+        <option>Avançado</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Número de vagas</label>
+      <input class="form-control" id="jogoVagas" type="number" value="12" min="1" max="50">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalNovoJogo')">Cancelar</button>
+      <button class="btn-sm primary" style="flex:1;justify-content:center" onclick="confirmarNovoJogo()">Salvar jogo</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+</div><!-- app -->
+
+<script>
+// ========== DADOS INICIAIS ==========
+const USUARIOS = [
+  { id:'ana',     nome:'Ana Souza',     email:'ana@calango.com',     tipo:'Membro',  nivel:'Intermediário', status:'Ativo' },
+  { id:'joao',    nome:'João Lima',     email:'joao@calango.com',    tipo:'Membro',  nivel:'Iniciante',     status:'Ativo' },
+  { id:'carla',   nome:'Carla Mendes',  email:'carla@calango.com',   tipo:'Membro',  nivel:'Avançado',      status:'Ativo' },
+  { id:'gerente', nome:'Ricardo Santos',email:'ricardo@calango.com', tipo:'Gerente', nivel:'',              status:'Ativo' }
+];
+
+let JOGOS = [
+  { id:'j1', nome:'Treino das Terças',  dia:'Terça',  tipo:'Individual', nivel:'Iniciante',     status:'Aberto',  vagas:10 },
+  { id:'j2', nome:'Treino das Terças',  dia:'Terça',  tipo:'Individual', nivel:'Intermediário', status:'Aberto',  vagas:12 },
+  { id:'j3', nome:'Treino das Quintas', dia:'Quinta', tipo:'Dupla',      nivel:'Intermediário', status:'Aberto',  vagas:8  },
+  { id:'j4', nome:'Treino de Sábado',   dia:'Sábado', tipo:'Individual', nivel:'Avançado',      status:'Aberto',  vagas:14 },
+  { id:'j5', nome:'Torneio de Duplas',  dia:'Sábado', tipo:'Dupla',      nivel:'Avançado',      status:'Fechado', vagas:8  },
+];
+
+let INSCRICOES = [
+  { id:'i1', usuarioId:'ana',  jogoId:'j3', status:'Aprovado', data:'01/06/2026' },
+  { id:'i2', usuarioId:'joao', jogoId:'j1', status:'Pendente', data:'03/06/2026' },
+];
+
+let DUPLAS = [
+  { id:'d1', nome:'Dupla Estrela', jogador1:'ana', jogador2:'carla', status:'Ativa', criadoPor:'ana' },
+];
+
+let SOLICITACOES_NIVEL = [
+  { id:'n1', usuarioId:'joao', nivelAtual:'Iniciante', nivelSolicitado:'Intermediário', status:'Pendente', data:'02/06/2026' },
+];
+
+let currentUser = null;
+let modalJogoSelecionado = null;
+
+// ========== LOGIN ==========
+function doLogin() {
+  const sel = document.getElementById('loginSelect').value;
+  if (!sel) { showToast('⚠️ Selecione um perfil para continuar'); return; }
+  currentUser = USUARIOS.find(u => u.id === sel);
+  document.getElementById('screenLogin').classList.remove('active');
+  document.getElementById('screenMain').classList.add('active');
+  initApp();
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('screenMain').classList.remove('active');
+  document.getElementById('screenLogin').classList.add('active');
+  document.getElementById('loginSelect').value = '';
+  document.getElementById('memberArea').style.display = 'none';
+  document.getElementById('gerenteArea').style.display = 'none';
+}
+
+// ========== INIT APP ==========
+function initApp() {
+  const initials = currentUser.nome.split(' ').map(n => n[0]).slice(0, 2).join('');
+  document.getElementById('topAvatar').textContent = initials;
+  document.getElementById('topUserName').textContent = currentUser.nome.split(' ')[0];
+
+  if (currentUser.tipo === 'Gerente') {
+    document.getElementById('gerenteArea').style.display = 'flex';
+    document.getElementById('memberArea').style.display = 'none';
+    initGerentePage();
+  } else {
+    document.getElementById('memberArea').style.display = 'flex';
+    document.getElementById('gerenteArea').style.display = 'none';
+    initMemberPage();
+  }
+}
+
+// ========== MEMBRO ==========
+function initMemberPage() {
+  document.getElementById('welcomeName').textContent = 'Olá, ' + currentUser.nome.split(' ')[0] + '! 👋';
+  document.getElementById('welcomeLevel').textContent = 'Nível: ' + currentUser.nivel;
+  const jogosNivel = JOGOS.filter(j => j.nivel === currentUser.nivel && j.status === 'Aberto');
+  const minhasDup = DUPLAS.filter(d => d.jogador1 === currentUser.id || d.jogador2 === currentUser.id);
+  const minhasInsc = INSCRICOES.filter(i => i.usuarioId === currentUser.id);
+  document.getElementById('wbJogos').textContent = jogosNivel.length;
+  document.getElementById('wbDuplas').textContent = minhasDup.length;
+  document.getElementById('wbInscricoes').textContent = minhasInsc.length;
+  renderJogosMember();
+  renderMinhasInscricoes();
+  renderMinhasDuplas();
+  renderPerfil();
+}
+
+function renderJogosMember() {
+  const jogos = JOGOS.filter(j => j.nivel === currentUser.nivel && j.status === 'Aberto');
+  const container = document.getElementById('jogosListMember');
+  document.getElementById('badgeJogosCount').textContent = jogos.length + ' disponíveis';
+  if (!jogos.length) {
+    container.innerHTML = '<div class="empty"><i class="ti ti-calendar-off"></i><div class="empty-msg">Nenhum jogo disponível para o seu nível no momento.</div></div>';
+    return;
+  }
+  container.innerHTML = jogos.map(j => {
+    const jaInscrito = INSCRICOES.find(i => i.usuarioId === currentUser.id && i.jogoId === j.id);
+    const ocupados = INSCRICOES.filter(i => i.jogoId === j.id && i.status !== 'Rejeitado').length;
+    const livres = j.vagas - ocupados;
+    const statusBadge = jaInscrito
+      ? `<span class="badge badge-${jaInscrito.status==='Aprovado'?'green':jaInscrito.status==='Rejeitado'?'red':'amber'}">${jaInscrito.status}</span>`
+      : `<button class="btn-sm primary" onclick="abrirInscricao('${j.id}')"><i class="ti ti-plus"></i> Inscrever</button>`;
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${j.nome}</div>
+          <div class="card-sub">${j.dia} · ${j.tipo}</div>
+        </div>
+        ${statusBadge}
+      </div>
+      <div class="card-meta">
+        <span class="badge badge-blue">${j.nivel}</span>
+        <span class="badge badge-${livres<=2?'red':livres<=5?'amber':'gray'}">${livres} vagas livres</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirInscricao(jogoId) {
+  const jogo = JOGOS.find(j => j.id === jogoId);
+  modalJogoSelecionado = jogo;
+  let extra = '';
+  if (jogo.tipo === 'Dupla') {
+    const minhasDup = DUPLAS.filter(d => (d.jogador1 === currentUser.id || d.jogador2 === currentUser.id) && d.status === 'Ativa');
+    const opts = minhasDup.length
+      ? minhasDup.map(d => `<option value="${d.id}">${d.nome}</option>`).join('')
+      : '<option value="">Você não tem duplas ativas</option>';
+    extra = `<div class="form-group"><label class="form-label">Selecionar dupla</label><select class="form-control" id="modalDuplaSelect">${opts}</select></div>`;
+  }
+  document.getElementById('modalInscricaoContent').innerHTML = `
+    <div class="card" style="background:#f5f4f0;margin-bottom:14px">
+      <div class="card-title">${jogo.nome}</div>
+      <div class="card-sub">${jogo.dia} · ${jogo.tipo} · ${jogo.nivel}</div>
+    </div>
+    ${extra}
+    <p style="font-size:13px;color:#666;line-height:1.5">Sua inscrição ficará como <strong>Pendente</strong> até ser aprovada pelo gerente.</p>`;
+  document.getElementById('modalInscricao').classList.add('open');
+}
+
+function confirmarInscricao() {
+  const jaExiste = INSCRICOES.find(i => i.usuarioId === currentUser.id && i.jogoId === modalJogoSelecionado.id);
+  if (jaExiste) { closeModal('modalInscricao'); showToast('⚠️ Você já está inscrito neste jogo!'); return; }
+  INSCRICOES.push({ id:'i'+Date.now(), usuarioId:currentUser.id, jogoId:modalJogoSelecionado.id, status:'Pendente', data:new Date().toLocaleDateString('pt-BR') });
+  closeModal('modalInscricao');
+  showToast('✅ Inscrição enviada! Aguardando aprovação.');
+  initMemberPage();
+}
+
+function renderMinhasInscricoes() {
+  const lista = INSCRICOES.filter(i => i.usuarioId === currentUser.id);
+  const container = document.getElementById('minhasInscricoesList');
+  if (!lista.length) {
+    container.innerHTML = '<div class="empty"><i class="ti ti-calendar-x"></i><div class="empty-msg">Você ainda não se inscreveu em nenhum jogo.<br>Vá até Início e se inscreva!</div></div>';
+    return;
+  }
+  container.innerHTML = lista.map(i => {
+    const jogo = JOGOS.find(j => j.id === i.jogoId);
+    const bCls = i.status==='Aprovado'?'green':i.status==='Rejeitado'?'red':'amber';
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${jogo ? jogo.nome : 'Jogo removido'}</div>
+          <div class="card-sub">${jogo ? jogo.dia+' · '+jogo.tipo : ''} · ${i.data}</div>
+        </div>
+        <span class="badge badge-${bCls}">${i.status}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMinhasDuplas() {
+  const lista = DUPLAS.filter(d => d.jogador1 === currentUser.id || d.jogador2 === currentUser.id);
+  const container = document.getElementById('minhasDuplasList');
+  if (!lista.length) {
+    container.innerHTML = '<div class="empty"><i class="ti ti-users-group"></i><div class="empty-msg">Você não tem duplas cadastradas.<br>Clique em "Nova dupla" para criar!</div></div>';
+    return;
+  }
+  container.innerHTML = lista.map(d => {
+    const p1 = USUARIOS.find(u => u.id === d.jogador1);
+    const p2 = USUARIOS.find(u => u.id === d.jogador2);
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${d.nome}</div>
+          <div class="card-sub">${p1?.nome||'?'} + ${p2?.nome||'?'}</div>
+        </div>
+        <span class="badge badge-${d.status==='Ativa'?'green':'gray'}">${d.status}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModalDupla() {
+  const outros = USUARIOS.filter(u => u.id !== currentUser.id && u.tipo === 'Membro');
+  document.getElementById('duplaJogador2').innerHTML = '<option value="">— Selecione um parceiro —</option>' +
+    outros.map(u => `<option value="${u.id}">${u.nome} (${u.nivel})</option>`).join('');
+  document.getElementById('duplaNome').value = '';
+  document.getElementById('modalDupla').classList.add('open');
+}
+
+function confirmarDupla() {
+  const nome = document.getElementById('duplaNome').value.trim();
+  const j2 = document.getElementById('duplaJogador2').value;
+  if (!nome) { showToast('⚠️ Digite o nome da dupla'); return; }
+  if (!j2) { showToast('⚠️ Selecione um parceiro'); return; }
+  DUPLAS.push({ id:'d'+Date.now(), nome, jogador1:currentUser.id, jogador2:j2, status:'Ativa', criadoPor:currentUser.id });
+  closeModal('modalDupla');
+  showToast('✅ Dupla criada com sucesso!');
+  initMemberPage();
+}
+
+function renderPerfil() {
+  const u = currentUser;
+  const insc = INSCRICOES.filter(i => i.usuarioId === u.id);
+  const aprov = insc.filter(i => i.status === 'Aprovado').length;
+  const duplas = DUPLAS.filter(d => d.jogador1 === u.id || d.jogador2 === u.id).length;
+  document.getElementById('perfilCard').innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div class="avatar" style="width:52px;height:52px;font-size:18px;flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+      <div>
+        <div class="card-title" style="font-size:16px">${u.nome}</div>
+        <div class="card-sub">${u.email}</div>
+        <span class="badge badge-green" style="margin-top:4px">${u.status}</span>
+      </div>
+    </div>
+    <hr>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+      <div style="background:#f5f4f0;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:20px;font-weight:700">${u.nivel||'—'}</div>
+        <div style="font-size:11px;color:#666;margin-top:2px">Nível</div>
+      </div>
+      <div style="background:#f5f4f0;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:20px;font-weight:700">${aprov}</div>
+        <div style="font-size:11px;color:#666;margin-top:2px">Confirmados</div>
+      </div>
+      <div style="background:#f5f4f0;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:20px;font-weight:700">${duplas}</div>
+        <div style="font-size:11px;color:#666;margin-top:2px">Duplas</div>
+      </div>
+    </div>`;
+  const solPend = SOLICITACOES_NIVEL.find(s => s.usuarioId === u.id && s.status === 'Pendente');
+  document.getElementById('selectNovoNivel').value = u.nivel;
+  if (solPend) {
+    document.getElementById('selectNovoNivel').disabled = true;
+    document.querySelector('#pageMemberPerfil .btn-sm.primary').textContent = '⏳ Solicitação enviada...';
+    document.querySelector('#pageMemberPerfil .btn-sm.primary').disabled = true;
+  } else {
+    document.getElementById('selectNovoNivel').disabled = false;
+  }
+}
+
+function solicitarNivel() {
+  const novo = document.getElementById('selectNovoNivel').value;
+  if (novo === currentUser.nivel) { showToast('⚠️ Esse já é o seu nível atual!'); return; }
+  const jaExiste = SOLICITACOES_NIVEL.find(s => s.usuarioId === currentUser.id && s.status === 'Pendente');
+  if (jaExiste) { showToast('⚠️ Você já tem uma solicitação pendente!'); return; }
+  SOLICITACOES_NIVEL.push({ id:'n'+Date.now(), usuarioId:currentUser.id, nivelAtual:currentUser.nivel, nivelSolicitado:novo, status:'Pendente', data:new Date().toLocaleDateString('pt-BR') });
+  showToast('✅ Solicitação enviada ao gerente!');
+  renderPerfil();
+}
+
+function memberPage(pageId, btn) {
+  document.querySelectorAll('#memberArea .page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('#memberNav .bnav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ========== GERENTE ==========
+function initGerentePage() {
+  document.getElementById('welcomeNameGerente').textContent = 'Olá, ' + currentUser.nome.split(' ')[0] + '! 👋';
+  renderGerenteHome();
+  renderInscricoesPend();
+  renderNivelSolic();
+  renderJogosGerente();
+  renderUsuariosGerente();
+}
+
+function renderGerenteHome() {
+  const membros = USUARIOS.filter(u => u.tipo === 'Membro');
+  const pend = INSCRICOES.filter(i => i.status === 'Pendente');
+  const niv = SOLICITACOES_NIVEL.filter(s => s.status === 'Pendente');
+  document.getElementById('statMembros').textContent = membros.length;
+  document.getElementById('statPend').textContent = pend.length + niv.length;
+  document.getElementById('statJogos').textContent = JOGOS.length;
+  document.getElementById('hintInscricoes').textContent = pend.length + ' aguardando aprovação';
+  document.getElementById('hintNivel').textContent = niv.length + ' solicitação(ões) pendente(s)';
+  document.getElementById('hintMembros').textContent = membros.length + ' membros ativos';
+}
+
+function renderInscricoesPend() {
+  const lista = INSCRICOES.filter(i => i.status === 'Pendente');
+  const container = document.getElementById('inscricoesPendList');
+  if (!lista.length) {
+    container.innerHTML = '<div class="empty"><i class="ti ti-circle-check"></i><div class="empty-msg">Nenhuma inscrição pendente.<br>Tudo em dia! ✅</div></div>';
+    return;
+  }
+  container.innerHTML = lista.map(i => {
+    const jogo = JOGOS.find(j => j.id === i.jogoId);
+    const usr = USUARIOS.find(u => u.id === i.usuarioId);
+    return `<div class="card">
+      <div class="card-title">${usr?.nome||'Usuário desconhecido'}</div>
+      <div class="card-sub">${jogo?.nome||'Jogo desconhecido'} · ${jogo?.dia||''} · ${jogo?.tipo||''}</div>
+      <div class="card-meta">
+        <span class="badge badge-amber">Pendente</span>
+        <span class="badge badge-blue">${jogo?.nivel||''}</span>
+        <span class="badge badge-gray">${i.data}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-sm success" onclick="aprovarInscricao('${i.id}')"><i class="ti ti-check"></i> Aprovar</button>
+        <button class="btn-sm danger" onclick="rejeitarInscricao('${i.id}')"><i class="ti ti-x"></i> Rejeitar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function aprovarInscricao(id) {
+  const insc = INSCRICOES.find(i => i.id === id);
+  if (insc) insc.status = 'Aprovado';
+  showToast('✅ Inscrição aprovada com sucesso!');
+  renderInscricoesPend();
+  renderGerenteHome();
+}
+
+function rejeitarInscricao(id) {
+  const insc = INSCRICOES.find(i => i.id === id);
+  if (insc) insc.status = 'Rejeitado';
+  showToast('❌ Inscrição rejeitada.');
+  renderInscricoesPend();
+  renderGerenteHome();
+}
+
+function renderNivelSolic() {
+  const lista = SOLICITACOES_NIVEL.filter(s => s.status === 'Pendente');
+  const container = document.getElementById('nivelSolicList');
+  if (!lista.length) {
+    container.innerHTML = '<div class="empty"><i class="ti ti-circle-check"></i><div class="empty-msg">Nenhuma solicitação de nível pendente.</div></div>';
+    return;
+  }
+  container.innerHTML = lista.map(s => {
+    const usr = USUARIOS.find(u => u.id === s.usuarioId);
+    return `<div class="card">
+      <div class="card-title">${usr?.nome||'?'}</div>
+      <div class="card-sub">${s.nivelAtual} → ${s.nivelSolicitado} · Solicitado em ${s.data}</div>
+      <div class="card-meta">
+        <span class="badge badge-amber">Pendente</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-sm success" onclick="aprovarNivel('${s.id}')"><i class="ti ti-check"></i> Aprovar</button>
+        <button class="btn-sm danger" onclick="rejeitarNivel('${s.id}')"><i class="ti ti-x"></i> Rejeitar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function aprovarNivel(id) {
+  const sol = SOLICITACOES_NIVEL.find(s => s.id === id);
+  if (sol) {
+    sol.status = 'Aprovado';
+    const usr = USUARIOS.find(u => u.id === sol.usuarioId);
+    if (usr) usr.nivel = sol.nivelSolicitado;
+  }
+  showToast('✅ Nível atualizado com sucesso!');
+  renderNivelSolic();
+  renderGerenteHome();
+}
+
+function rejeitarNivel(id) {
+  const sol = SOLICITACOES_NIVEL.find(s => s.id === id);
+  if (sol) sol.status = 'Rejeitado';
+  showToast('❌ Solicitação de nível rejeitada.');
+  renderNivelSolic();
+  renderGerenteHome();
+}
+
+function renderJogosGerente() {
+  const container = document.getElementById('jogosGerenteList');
+  container.innerHTML = JOGOS.map(j => {
+    const ocup = INSCRICOES.filter(i => i.jogoId === j.id && i.status !== 'Rejeitado').length;
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${j.nome}</div>
+          <div class="card-sub">${j.dia} · ${j.tipo}</div>
+        </div>
+        <span class="badge badge-${j.status==='Aberto'?'green':'gray'}">${j.status}</span>
+      </div>
+      <div class="card-meta">
+        <span class="badge badge-blue">${j.nivel}</span>
+        <span class="badge badge-gray">${ocup}/${j.vagas} vagas</span>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn-sm" onclick="toggleJogo('${j.id}')">
+          <i class="ti ti-${j.status==='Aberto'?'lock':'lock-open'}"></i>
+          ${j.status==='Aberto'?'Fechar':'Abrir'} jogo
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleJogo(id) {
+  const j = JOGOS.find(g => g.id === id);
+  if (j) j.status = j.status === 'Aberto' ? 'Fechado' : 'Aberto';
+  showToast('✅ Status do jogo atualizado!');
+  renderJogosGerente();
+  renderGerenteHome();
+}
+
+function openModalNovoJogo() {
+  document.getElementById('jogoNome').value = '';
+  document.getElementById('modalNovoJogo').classList.add('open');
+}
+
+function confirmarNovoJogo() {
+  const nome = document.getElementById('jogoNome').value.trim();
+  if (!nome) { showToast('⚠️ Digite o nome do jogo'); return; }
+  JOGOS.push({
+    id: 'j'+Date.now(),
+    nome,
+    dia:   document.getElementById('jogoDia').value,
+    tipo:  document.getElementById('jogoTipo').value,
+    nivel: document.getElementById('jogoNivel').value,
+    status:'Aberto',
+    vagas: parseInt(document.getElementById('jogoVagas').value) || 12
+  });
+  closeModal('modalNovoJogo');
+  showToast('✅ Novo jogo criado com sucesso!');
+  renderJogosGerente();
+  renderGerenteHome();
+}
+
+function renderUsuariosGerente() {
+  const membros = USUARIOS.filter(u => u.tipo === 'Membro');
+  const container = document.getElementById('usuariosGerenteList');
+  container.innerHTML = membros.map(u => {
+    const insc = INSCRICOES.filter(i => i.usuarioId === u.id).length;
+    const duplas = DUPLAS.filter(d => d.jogador1 === u.id || d.jogador2 === u.id).length;
+    return `<div class="card">
+      <div class="card-row">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+          <div>
+            <div class="card-title">${u.nome}</div>
+            <div class="card-sub">${u.email}</div>
+          </div>
+        </div>
+        <span class="badge badge-${u.status==='Ativo'?'green':'gray'}">${u.status}</span>
+      </div>
+      <div class="card-meta">
+        <span class="badge badge-blue">${u.nivel}</span>
+        <span class="badge badge-gray">${insc} inscrições</span>
+        <span class="badge badge-gray">${duplas} duplas</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function gerentePage(pageId, btn) {
+  document.querySelectorAll('#gerenteArea .page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('#gerenteNav .bnav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+// ========== UTILS ==========
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Fecha modal ao clicar fora
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>
