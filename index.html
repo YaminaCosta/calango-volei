@@ -399,6 +399,9 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         </div>
         <div id="diaristaMemberPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo para ver as opções</p></div></div>
       </div>
+
+      <!-- PERFIL MEMBRO -->
+      <div class="page" id="pageMemberPerfil">
         <div class="sec-title" style="margin-bottom:12px">Meu perfil</div>
         <div class="card" id="perfilCard"></div>
         <br>
@@ -437,7 +440,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         </div>
       </div>
 
-    </div>
+    </div><!-- end memberContent -->
     <div class="bottomnav" id="memberNav">
       <button class="bnav-btn active" onclick="memberPage('pageMemberHome',this)"><i class="ti ti-home"></i>Início</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberInscricoes',this)"><i class="ti ti-calendar-check"></i>Inscrições</button>
@@ -472,9 +475,9 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           <div class="bat"><div class="bat-title">Solicitações de nível</div><div class="bat-sub" id="hintNivel">—</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
-        <button class="btn-action" onclick="gerentePage('pageGerenteJogos',document.querySelectorAll('#gerenteNav .bnav-btn')[3])">
-          <div class="bai"><i class="ti ti-calendar-plus"></i></div>
-          <div class="bat"><div class="bat-title">Configurar jogos</div><div class="bat-sub">Gerenciar calendário e valores</div></div>
+        <button class="btn-action" onclick="gerentePage('pageGerenteDiaristas',document.querySelectorAll('#gerenteNav .bnav-btn')[3])">
+          <div class="bai"><i class="ti ti-run"></i></div>
+          <div class="bat"><div class="bat-title">Diaristas & Confirmações</div><div class="bat-sub">Presenças e solicitações</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
         <button class="btn-action" onclick="gerentePage('pageGerenteRelatorio',document.querySelectorAll('#gerenteNav .bnav-btn')[4])">
@@ -482,7 +485,12 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           <div class="bat"><div class="bat-title">Relatório mensal</div><div class="bat-sub">Inscritos e valores por mês</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
-        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[5])">
+        <button class="btn-action" onclick="gerentePage('pageGerenteJogos',document.querySelectorAll('#gerenteNav .bnav-btn')[5])">
+          <div class="bai"><i class="ti ti-calendar-plus"></i></div>
+          <div class="bat"><div class="bat-title">Configurar jogos</div><div class="bat-sub">Gerenciar calendário e valores</div></div>
+          <i class="ti ti-chevron-right" style="color:#ccc"></i>
+        </button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[6])">
           <div class="bai"><i class="ti ti-users"></i></div>
           <div class="bat"><div class="bat-title">Gerenciar membros</div><div class="bat-sub" id="hintMembros">—</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
@@ -2009,21 +2017,24 @@ window.carregarDiaristas = async function(){
   if(!jogoId) return;
   _diaristasJogoAtual = allJogos.find(j=>j.id===jogoId);
   loading(true);
-  const [inscSnap,diarSnap] = await Promise.all([
-    getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId),where('status','==','Aprovado'))),
-    getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)))
+
+  // queries simples por jogoId apenas (sem compound index)
+  const [inscSnap, diarSnap] = await Promise.all([
+    getDocs(query(collection(db,'inscricoes'), where('jogoId','==',jogoId))),
+    getDocs(query(collection(db,'diaristas'),  where('jogoId','==',jogoId)))
   ]);
-  const inscritos  = inscSnap.docs.map(d=>({id:d.id,...d.data()}));
-  const diaristas  = diarSnap.docs.map(d=>({id:d.id,...d.data()}));
+  const inscritos = inscSnap.docs.map(d=>({id:d.id,...d.data()})).filter(i=>i.status==='Aprovado');
+  const diaristas = diarSnap.docs.map(d=>({id:d.id,...d.data()}));
   loading(false);
 
   // painel membros inscritos + confirmação
   const panelM = document.getElementById('diaristaMembrosPanel');
-  if(!inscritos.length){ panelM.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro inscrito neste jogo.</p></div>'; }
-  else{
+  if(!inscritos.length){
+    panelM.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro inscrito neste jogo.</p></div>';
+  } else {
     panelM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+
     inscritos.map(i=>{
-      const conf = diaristas.find(d=>d.usuarioId===i.usuarioId&&d.tipo==='membro');
+      const conf = diaristas.find(d=>d.usuarioId===i.usuarioId && d.tipo==='membro');
       const confirmado = conf?.confirmado;
       return `<div class="card">
         <div class="card-row">
@@ -2031,8 +2042,8 @@ window.carregarDiaristas = async function(){
           <span class="badge ${confirmado===true?'bg':confirmado===false?'br':'ba'}">${confirmado===true?'Confirmado':confirmado===false?'Desistiu':'Pendente'}</span>
         </div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="btn-sm ok" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',true)"><i class="ti ti-check"></i> Confirmar presença</button>
-          <button class="btn-sm no" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',false)"><i class="ti ti-x"></i> Registrar desistência</button>
+          <button class="btn-sm ok" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',true)"><i class="ti ti-check"></i> Confirmar</button>
+          <button class="btn-sm no"  style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',false)"><i class="ti ti-x"></i> Desistência</button>
         </div>
       </div>`;
     }).join('');
@@ -2041,8 +2052,9 @@ window.carregarDiaristas = async function(){
   // painel solicitações de diaristas
   const pendDiar = diaristas.filter(d=>d.tipo==='diarista');
   const panelS   = document.getElementById('diaristaSolicPanel');
-  if(!pendDiar.length){ panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação de diarista para este jogo.</p></div>'; }
-  else{
+  if(!pendDiar.length){
+    panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação de diarista para este jogo.</p></div>';
+  } else {
     panelS.innerHTML=pendDiar.map(d=>`<div class="card">
       <div class="card-row">
         <div>
@@ -2061,11 +2073,12 @@ window.carregarDiaristas = async function(){
 
 window.marcarPresenca = async function(usuarioId, jogoId, confirmado){
   loading(true);
-  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',usuarioId),where('tipo','==','membro')));
-  if(snap.empty){
-    await addDoc(collection(db,'diaristas'),{jogoId,usuarioId,tipo:'membro',confirmado,criadoEm:serverTimestamp()});
+  const snap = await getDocs(query(collection(db,'diaristas'), where('jogoId','==',jogoId)));
+  const existing = snap.docs.find(d=>d.data().usuarioId===usuarioId && d.data().tipo==='membro');
+  if(!existing){
+    await addDoc(collection(db,'diaristas'),{jogoId, usuarioId, tipo:'membro', confirmado, criadoEm:serverTimestamp()});
   } else {
-    await updateDoc(doc(db,'diaristas',snap.docs[0].id),{confirmado});
+    await updateDoc(doc(db,'diaristas',existing.id),{confirmado});
   }
   showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada.');
   await carregarDiaristas(); loading(false);
@@ -2099,12 +2112,14 @@ window.carregarInfoDiaMembro = async function(){
   if(!jogoId){ document.getElementById('diaristaMemberPanel').innerHTML=''; return; }
   _diaristasJogoAtualMembro = allJogos.find(j=>j.id===jogoId);
   loading(true);
+  // query simples — filtra por jogoId só, depois filtra currentUID no cliente
   const [inscSnap,diarSnap] = await Promise.all([
-    getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID))),
-    getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID)))
+    getDocs(query(collection(db,'inscricoes'), where('jogoId','==',jogoId))),
+    getDocs(query(collection(db,'diaristas'),  where('jogoId','==',jogoId)))
   ]);
-  const minhaInsc   = inscSnap.empty ? null : inscSnap.docs[0].data();
-  const meuRegistro = diarSnap.empty ? null : {id:diarSnap.docs[0].id,...diarSnap.docs[0].data()};
+  const minhaInsc   = inscSnap.docs.map(d=>d.data()).find(i=>i.usuarioId===currentUID) || null;
+  const meuDoc      = diarSnap.docs.find(d=>d.data().usuarioId===currentUID);
+  const meuRegistro = meuDoc ? {id:meuDoc.id,...meuDoc.data()} : null;
   loading(false);
 
   const panel = document.getElementById('diaristaMemberPanel');
@@ -2178,11 +2193,12 @@ window.selecionarTaxa = function(v){
 
 window.membroConfirmaPresenca = async function(jogoId, confirmado){
   loading(true);
-  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID),where('tipo','==','membro')));
-  if(snap.empty){
-    await addDoc(collection(db,'diaristas'),{jogoId,usuarioId:currentUID,usuarioNome:currentUser.nome,tipo:'membro',confirmado,criadoEm:serverTimestamp()});
+  const snap = await getDocs(query(collection(db,'diaristas'), where('jogoId','==',jogoId)));
+  const existing = snap.docs.find(d=>d.data().usuarioId===currentUID && d.data().tipo==='membro');
+  if(!existing){
+    await addDoc(collection(db,'diaristas'),{jogoId, usuarioId:currentUID, usuarioNome:currentUser.nome, tipo:'membro', confirmado, criadoEm:serverTimestamp()});
   } else {
-    await updateDoc(doc(db,'diaristas',snap.docs[0].id),{confirmado});
+    await updateDoc(doc(db,'diaristas',existing.id),{confirmado});
   }
   showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada. O gerente será notificado.');
   await carregarInfoDiaMembro(); loading(false);
@@ -2190,8 +2206,9 @@ window.membroConfirmaPresenca = async function(jogoId, confirmado){
 
 window.solicitarDiaria = async function(jogoId){
   loading(true);
-  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID)));
-  if(!snap.empty){ loading(false); showToast('⚠️ Você já tem uma solicitação para este jogo!'); return; }
+  const snap = await getDocs(query(collection(db,'diaristas'), where('jogoId','==',jogoId)));
+  const jaExiste = snap.docs.find(d=>d.data().usuarioId===currentUID);
+  if(jaExiste){ loading(false); showToast('⚠️ Você já tem uma solicitação para este jogo!'); return; }
   await addDoc(collection(db,'diaristas'),{
     jogoId, usuarioId:currentUID, usuarioNome:currentUser.nome,
     tipo:'diarista', taxa:_taxaSelecionada, status:'Pendente', criadoEm:serverTimestamp()
@@ -2210,4 +2227,3 @@ window.closeModal = closeModal;
 </script>
 </body>
 </html>
-  
