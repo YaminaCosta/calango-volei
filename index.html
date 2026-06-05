@@ -386,8 +386,19 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div id="minhasDuplasList"></div>
       </div>
 
-      <!-- PERFIL MEMBRO -->
-      <div class="page" id="pageMemberPerfil">
+      <!-- DIARISTAS MEMBRO -->
+      <div class="page" id="pageMemberDiaristas">
+        <div class="sec-header">
+          <div class="sec-title">Diaristas & Confirmações</div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Selecionar jogo</label>
+          <select class="form-control" id="diaristasJogoSelMembro" onchange="carregarInfoDiaMembro()" style="font-size:13px">
+            <option value="">Selecione um jogo...</option>
+          </select>
+        </div>
+        <div id="diaristaMemberPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo para ver as opções</p></div></div>
+      </div>
         <div class="sec-title" style="margin-bottom:12px">Meu perfil</div>
         <div class="card" id="perfilCard"></div>
         <br>
@@ -430,6 +441,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
     <div class="bottomnav" id="memberNav">
       <button class="bnav-btn active" onclick="memberPage('pageMemberHome',this)"><i class="ti ti-home"></i>Início</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberInscricoes',this)"><i class="ti ti-calendar-check"></i>Inscrições</button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberDiaristas',this);initDiaristasMembro()"><i class="ti ti-run"></i>Diaristas</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberDuplas',this)"><i class="ti ti-users"></i>Duplas</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberPerfil',this)"><i class="ti ti-user"></i>Perfil</button>
     </div>
@@ -532,18 +544,23 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           <!-- ABAS DO RELATÓRIO -->
           <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px" id="relTabs" style="display:none">
             <button id="tabRelJogo" onclick="switchRelTab('jogo')"
-              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">
+              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">
               Por jogo
             </button>
             <button id="tabRelMatriz" onclick="switchRelTab('matriz')"
-              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">
+              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">
               Membros × Dias
+            </button>
+            <button id="tabRelOcupacao" onclick="switchRelTab('ocupacao')"
+              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">
+              Nível × Dia
             </button>
           </div>
           <div id="relatorioContent">
             <div class="empty"><i class="ti ti-report"></i><p>Selecione o mês e clique em pesquisar</p></div>
           </div>
           <div id="relatorioMatriz" style="display:none"></div>
+          <div id="relatorioOcupacao" style="display:none"></div>
         </div>
       </div>
 
@@ -579,12 +596,41 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       </div>
 
     </div>
+      <!-- DIARISTAS -->
+      <div class="page" id="pageGerenteDiaristas">
+        <div class="sec-header">
+          <div class="sec-title">Diaristas & Confirmações</div>
+        </div>
+        <!-- seletor de jogo -->
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Selecionar jogo do dia</label>
+          <select class="form-control" id="diaristasJogoSel" onchange="carregarDiaristas()" style="font-size:13px">
+            <option value="">Selecione um jogo...</option>
+          </select>
+        </div>
+        <!-- abas -->
+        <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px" id="diaristaTabs">
+          <button id="tabDiaristaMembros" onclick="switchDiaristaTab('membros')"
+            style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">
+            Membros inscritos
+          </button>
+          <button id="tabDiaristaReqs" onclick="switchDiaristaTab('reqs')"
+            style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">
+            Solicit. diaristas
+          </button>
+        </div>
+        <div id="diaristaMembrosPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo para ver os inscritos</p></div></div>
+        <div id="diaristaSolicPanel" style="display:none"></div>
+      </div>
+
+    </div>
     <div class="bottomnav" id="gerenteNav">
       <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome',this)"><i class="ti ti-home"></i>Início</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteInscricoes',this)"><i class="ti ti-clipboard-check"></i>Inscrições</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteNivel',this)"><i class="ti ti-chart-arrows-vertical"></i>Nível</button>
-      <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos',this)"><i class="ti ti-calendar"></i>Jogos</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteDiaristas',this)"><i class="ti ti-run"></i>Diaristas</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteRelatorio',this)"><i class="ti ti-report-analytics"></i>Relatório</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos',this)"><i class="ti ti-calendar"></i>Jogos</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this)"><i class="ti ti-users"></i>Membros</button>
     </div>
   </div>
@@ -673,6 +719,32 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <option value="sim">Sim</option>
       </select>
     </div>
+    <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">
+      Taxas de diarista
+    </div>
+    <div style="background:var(--am-bg);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--am);margin-bottom:10px;line-height:1.5">
+      Defina as taxas que o diarista poderá escolher ao solicitar vaga neste jogo.
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Taxa Dia Simples (R$)</label>
+        <input class="form-control" id="jogoTaxaSimples" type="number" value="15" min="0" step="0.01" placeholder="15,00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Taxa Dia Especial (R$)</label>
+        <input class="form-control" id="jogoTaxaEspecial" type="number" value="25" min="0" step="0.01" placeholder="25,00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Rótulo Dia Simples</label>
+        <input class="form-control" id="jogoTaxaSimplesLabel" placeholder="Ex: Dia simples" value="Dia simples">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rótulo Dia Especial</label>
+        <input class="form-control" id="jogoTaxaEspecialLabel" placeholder="Ex: Com professor" value="Com professor">
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalNovoJogo')">Cancelar</button>
       <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarNovoJogo()">Salvar</button>
@@ -716,6 +788,17 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
   </div>
 </div>
 
+<div class="modal-overlay" id="modalDiaria">
+  <div class="modal">
+    <div class="modal-title">🏃 Solicitar vaga de diarista</div>
+    <div id="modalDiariaContent"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalDiaria')">Cancelar</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarSolicitacaoDiaria()">Solicitar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -741,9 +824,11 @@ function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 // ── Ir para o início ao clicar no logo ──
 window.goHome = function(){
   if(currentUser?.tipo==='Membro'){
-    memberPage('pageMemberHome', document.querySelector('#memberNav .bnav-btn'));
+    const firstBtn = document.querySelector('#memberNav .bnav-btn');
+    memberPage('pageMemberHome', firstBtn);
   } else {
-    gerentePage('pageGerenteHome', document.querySelector('#gerenteNav .bnav-btn'));
+    const firstBtn = document.querySelector('#gerenteNav .bnav-btn');
+    gerentePage('pageGerenteHome', firstBtn);
   }
 };
 
@@ -1366,16 +1451,20 @@ window.confirmarReplicar = async function(){
   let count = 0;
   for(const j of jogosOrigem){
     const novoJogo = {
-      nome:      j.nome,
-      dia:       j.dia,
-      mesAno:    destino,
-      tipo:      j.tipo,
-      nivel:     j.nivel,
-      vagas:     j.vagas || 12,
-      valor:     j.valor || 0,
-      professor: j.professor || 'nao',
-      status:    'Aberto',
-      criadoEm:  serverTimestamp()
+      nome:             j.nome,
+      dia:              j.dia,
+      mesAno:           destino,
+      tipo:             j.tipo,
+      nivel:            j.nivel,
+      vagas:            j.vagas || 12,
+      valor:            j.valor || 0,
+      professor:        j.professor || 'nao',
+      taxaSimples:      j.taxaSimples || 15,
+      taxaEspecial:     j.taxaEspecial || 25,
+      taxaSimplesLabel: j.taxaSimplesLabel || 'Dia simples',
+      taxaEspecialLabel:j.taxaEspecialLabel || 'Com professor',
+      status:           'Aberto',
+      criadoEm:         serverTimestamp()
     };
     const ref = await addDoc(collection(db,'jogos'), novoJogo);
     allJogos.push({ id:ref.id, ...novoJogo });
@@ -1395,6 +1484,10 @@ window.openModalNovoJogo = function(){
   document.getElementById('jogoValor').value='0';
   document.getElementById('jogoVagas').value='12';
   document.getElementById('jogoProfessor').value='nao';
+  document.getElementById('jogoTaxaSimples').value='15';
+  document.getElementById('jogoTaxaEspecial').value='25';
+  document.getElementById('jogoTaxaSimplesLabel').value='Dia simples';
+  document.getElementById('jogoTaxaEspecialLabel').value='Com professor';
   document.getElementById('modalNovoJogo').classList.add('open');
 };
 
@@ -1409,6 +1502,10 @@ window.editarJogo = function(id){
   document.getElementById('jogoVagas').value=j.vagas||12;
   document.getElementById('jogoValor').value=j.valor||0;
   document.getElementById('jogoProfessor').value=j.professor||'nao';
+  document.getElementById('jogoTaxaSimples').value=j.taxaSimples||15;
+  document.getElementById('jogoTaxaEspecial').value=j.taxaEspecial||25;
+  document.getElementById('jogoTaxaSimplesLabel').value=j.taxaSimplesLabel||'Dia simples';
+  document.getElementById('jogoTaxaEspecialLabel').value=j.taxaEspecialLabel||'Com professor';
   document.getElementById('modalNovoJogo').classList.add('open');
 };
 
@@ -1424,6 +1521,10 @@ window.confirmarNovoJogo = async function(){
     vagas:parseInt(document.getElementById('jogoVagas').value)||12,
     valor:parseFloat(document.getElementById('jogoValor').value)||0,
     professor:document.getElementById('jogoProfessor').value,
+    taxaSimples:parseFloat(document.getElementById('jogoTaxaSimples').value)||15,
+    taxaEspecial:parseFloat(document.getElementById('jogoTaxaEspecial').value)||25,
+    taxaSimplesLabel:document.getElementById('jogoTaxaSimplesLabel').value.trim()||'Dia simples',
+    taxaEspecialLabel:document.getElementById('jogoTaxaEspecialLabel').value.trim()||'Com professor',
     status:'Aberto'
   };
   loading(true);
@@ -1471,12 +1572,13 @@ window.excluirJogo = async function(id){
 let _relInscs = []; // cache das inscrições do mês atual
 
 window.switchRelTab = function(tab){
-  document.getElementById('tabRelJogo').style.background   = tab==='jogo'?'#fff':'transparent';
-  document.getElementById('tabRelJogo').style.color        = tab==='jogo'?'var(--tx)':'var(--tx2)';
-  document.getElementById('tabRelMatriz').style.background = tab==='matriz'?'#fff':'transparent';
-  document.getElementById('tabRelMatriz').style.color      = tab==='matriz'?'var(--tx)':'var(--tx2)';
-  document.getElementById('relatorioContent').style.display = tab==='jogo'?'block':'none';
-  document.getElementById('relatorioMatriz').style.display  = tab==='matriz'?'block':'none';
+  ['jogo','matriz','ocupacao'].forEach(t=>{
+    const btn = document.getElementById('tabRel'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn){ btn.style.background=tab===t?'#fff':'transparent'; btn.style.color=tab===t?'var(--tx)':'var(--tx2)'; }
+  });
+  document.getElementById('relatorioContent').style.display   = tab==='jogo'?'block':'none';
+  document.getElementById('relatorioMatriz').style.display    = tab==='matriz'?'block':'none';
+  document.getElementById('relatorioOcupacao').style.display  = tab==='ocupacao'?'block':'none';
 };
 
 window.gerarRelatorio = async function(){
@@ -1585,6 +1687,48 @@ window.gerarRelatorio = async function(){
     <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarMatrizCSV('${mesAno}')">
       <i class="ti ti-download"></i> Exportar CSV (matriz)
     </button>`;
+
+  // ── ABA 3: ocupação por nível × dia ──
+  const niveis = ['Iniciante','Intermediário','Avançado'];
+  // busca inscrições de todos os jogos do mês (todos os status aprovado por nível)
+  const jogosDoMes = allJogos.filter(j=>j.mesAno===mesAno);
+  const thDias = jogosDoMes.map(j=>`<th style="min-width:80px;font-size:11px;white-space:nowrap">${j.nome}<br><span style="font-weight:400;opacity:.7">${j.dia}</span></th>`).join('');
+  const ocupRows = niveis.map(niv=>{
+    const cels = jogosDoMes.map(j=>{
+      const qty = _relInscs.filter(i=>i.jogoId===j.id).length ||
+                  _relInscs.filter(i=>i.jogoNome===j.nome && allUsers.find(u=>u.uid===i.usuarioId&&u.nivel===niv)).length;
+      // conta inscritos desse nível nesse jogo
+      const count = _relInscs.filter(i=> i.jogoNome===j.nome &&
+        allUsers.find(u=>(u.uid===i.usuarioId||u.nome===i.usuarioNome)&&u.nivel===niv)).length;
+      return `<td style="text-align:center;font-size:13px;font-weight:${count>0?'600':'400'};color:${count>0?'var(--ok)':'var(--tx2)'}">${count||'—'}</td>`;
+    }).join('');
+    const totalNiv = jogosDoMes.reduce((s,j)=>s+_relInscs.filter(i=>
+      i.jogoNome===j.nome && allUsers.find(u=>(u.uid===i.usuarioId||u.nome===i.usuarioNome)&&u.nivel===niv)).length,0);
+    return `<tr><td style="font-weight:600;font-size:12px">${niv}</td>${cels}<td style="text-align:center;font-weight:700;color:var(--or)">${totalNiv||'—'}</td></tr>`;
+  }).join('');
+  // linha total
+  const totDias = jogosDoMes.map(j=>{
+    const c=_relInscs.filter(i=>i.jogoNome===j.nome).length;
+    return `<td style="text-align:center;font-weight:700;font-size:12px">${c||'—'}</td>`;
+  }).join('');
+  const totalGeral2=_relInscs.length;
+
+  document.getElementById('relatorioOcupacao').innerHTML=`
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Ocupação por nível × dia de jogo em <strong>${mesAno}</strong></div>
+    <div style="overflow-x:auto">
+    <table class="rel-table" style="min-width:100%">
+      <thead><tr>
+        <th style="min-width:100px">Nível</th>
+        ${thDias}
+        <th style="text-align:center">Total</th>
+      </tr></thead>
+      <tbody>${ocupRows}</tbody>
+      <tfoot><tr style="background:var(--sur2)">
+        <td style="font-weight:700;font-size:12px">Total inscritos</td>
+        ${totDias}
+        <td style="text-align:center;font-weight:700;color:var(--or)">${totalGeral2}</td>
+      </tr></tfoot>
+    </table></div>`;
   loading(false);
 };
 
@@ -1672,9 +1816,9 @@ function renderUsuariosGerente(){
 }
 
 window.limparFiltrosMembros = function(){
-  document.getElementById('buscaMembro').value='';
-  document.getElementById('filtroNivelMembro').value='';
-  document.getElementById('filtroStatusMembro').value='';
+  const b=document.getElementById('buscaMembro'); if(b) b.value='';
+  const n=document.getElementById('filtroNivelMembro'); if(n) n.value='';
+  const s=document.getElementById('filtroStatusMembro'); if(s) s.value='';
   renderUsuariosGerente();
 };
 
@@ -1786,6 +1930,290 @@ window.gerentePage = function(pageId, btn){
   document.getElementById(pageId).classList.add('active');
   document.querySelectorAll('#gerenteNav .bnav-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
+  // inicializa tela de diaristas ao abrir
+  if(pageId==='pageGerenteDiaristas') initDiaristasGerente();
+};
+
+// ════════════════════════════════
+// ITEM 4: APROVAÇÃO DE NÍVEL DE NOVOS MEMBROS
+// Cadastro já vem com nível escolhido pelo membro.
+// Gerente vê na tela de Nível os membros cujo nível nunca foi aprovado (nivelAprovado===false)
+// ════════════════════════════════
+// Na renderNivelSolic já listamos SolicitacoesNivel.
+// Adicionalmente, mostramos membros novos com nivelAprovado===false
+async function renderNivelSolic(){
+  const snap=await getDocs(query(collection(db,'solicitacoesNivel'),where('status','==','Pendente')));
+  const novos=allUsers.filter(u=>u.tipo==='Membro'&&u.nivelAprovado===false);
+  const el=document.getElementById('nivelSolicList');
+  let html='';
+
+  if(novos.length){
+    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Novos membros — nível pendente de aprovação</div>`;
+    html+=novos.map(u=>`<div class="card">
+      <div class="card-title">${u.nome}${u.nomeApresentacao?` <span style="font-size:12px;color:var(--or)">(${u.nomeApresentacao})</span>`:''}</div>
+      <div class="card-sub">Nível autodeclarado: <strong>${u.nivel}</strong></div>
+      <div class="card-meta"><span class="badge ba">Aguardando aprovação</span></div>
+      <div style="display:flex;gap:8px;margin-top:11px">
+        <button class="btn-sm ok" onclick="window.aprovarNivelNovo('${u.uid}')"><i class="ti ti-check"></i> Confirmar nível</button>
+        <button class="btn-sm no" onclick="window.rejeitarNivelNovo('${u.uid}')"><i class="ti ti-x"></i> Reclassificar</button>
+      </div>
+    </div>`).join('');
+    if(snap.size) html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Solicitações de mudança de nível</div>`;
+  }
+
+  if(!snap.size&&!novos.length){ el.innerHTML='<div class="empty"><i class="ti ti-circle-check"></i><p>Nenhuma solicitação pendente.</p></div>'; return; }
+
+  html+=snap.docs.map(d=>{
+    const s={id:d.id,...d.data()};
+    return `<div class="card">
+      <div class="card-title">${s.usuarioNome}</div>
+      <div class="card-sub">${s.nivelAtual} → ${s.nivelSolicitado}</div>
+      <div style="display:flex;gap:8px;margin-top:11px">
+        <button class="btn-sm ok" onclick="window.aprovarNivel('${s.id}','${s.usuarioId}','${s.nivelSolicitado}')"><i class="ti ti-check"></i> Aprovar</button>
+        <button class="btn-sm no" onclick="window.rejeitarNivel('${s.id}')"><i class="ti ti-x"></i> Rejeitar</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=html;
+}
+
+window.aprovarNivelNovo = async function(uid){
+  loading(true);
+  await updateDoc(doc(db,'usuarios',uid),{nivelAprovado:true});
+  const u=allUsers.find(x=>x.uid===uid); if(u) u.nivelAprovado=true;
+  showToast('✅ Nível confirmado!');
+  await renderNivelSolic(); await renderGerenteHome(); loading(false);
+};
+window.rejeitarNivelNovo = async function(uid){
+  const novoNivel=prompt('Informe o nível correto (Iniciante / Intermediário / Avançado):');
+  if(!novoNivel) return;
+  loading(true);
+  await updateDoc(doc(db,'usuarios',uid),{nivel:novoNivel,nivelAprovado:true});
+  const u=allUsers.find(x=>x.uid===uid); if(u){u.nivel=novoNivel;u.nivelAprovado=true;}
+  showToast('✅ Nível reclassificado para '+novoNivel+'!');
+  await renderNivelSolic(); await renderGerenteHome(); loading(false);
+};
+
+// também marcar nivelAprovado=false no cadastro
+// (já feito no setDoc — veja que o campo não existia; adicionamos aqui retroativamente)
+
+// ════════════════════════════════
+// ITEM 5: DIARISTAS
+// Coleção: diaristas { jogoId, usuarioId, usuarioNome, tipo:'membro'|'diarista', taxa, status:'Pendente'|'Aprovado'|'Rejeitado', confirmado:bool }
+// ════════════════════════════════
+let _diaristasJogoAtual = null;
+
+window.switchDiaristaTab = function(tab){
+  document.getElementById('tabDiaristaMembros').style.background = tab==='membros'?'#fff':'transparent';
+  document.getElementById('tabDiaristaMembros').style.color      = tab==='membros'?'var(--tx)':'var(--tx2)';
+  document.getElementById('tabDiaristaReqs').style.background    = tab==='reqs'?'#fff':'transparent';
+  document.getElementById('tabDiaristaReqs').style.color         = tab==='reqs'?'var(--tx)':'var(--tx2)';
+  document.getElementById('diaristaMembrosPanel').style.display  = tab==='membros'?'block':'none';
+  document.getElementById('diaristaSolicPanel').style.display    = tab==='reqs'?'block':'none';
+};
+
+function initDiaristasGerente(){
+  const sel = document.getElementById('diaristasJogoSel');
+  const jogosAbertos = allJogos.filter(j=>j.status==='Aberto');
+  sel.innerHTML='<option value="">Selecione um jogo...</option>'+
+    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+}
+
+window.carregarDiaristas = async function(){
+  const jogoId = document.getElementById('diaristasJogoSel').value;
+  if(!jogoId) return;
+  _diaristasJogoAtual = allJogos.find(j=>j.id===jogoId);
+  loading(true);
+  const [inscSnap,diarSnap] = await Promise.all([
+    getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId),where('status','==','Aprovado'))),
+    getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)))
+  ]);
+  const inscritos  = inscSnap.docs.map(d=>({id:d.id,...d.data()}));
+  const diaristas  = diarSnap.docs.map(d=>({id:d.id,...d.data()}));
+  loading(false);
+
+  // painel membros inscritos + confirmação
+  const panelM = document.getElementById('diaristaMembrosPanel');
+  if(!inscritos.length){ panelM.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro inscrito neste jogo.</p></div>'; }
+  else{
+    panelM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+
+    inscritos.map(i=>{
+      const conf = diaristas.find(d=>d.usuarioId===i.usuarioId&&d.tipo==='membro');
+      const confirmado = conf?.confirmado;
+      return `<div class="card">
+        <div class="card-row">
+          <div><div class="card-title">${i.usuarioNome}</div></div>
+          <span class="badge ${confirmado===true?'bg':confirmado===false?'br':'ba'}">${confirmado===true?'Confirmado':confirmado===false?'Desistiu':'Pendente'}</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn-sm ok" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',true)"><i class="ti ti-check"></i> Confirmar presença</button>
+          <button class="btn-sm no" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',false)"><i class="ti ti-x"></i> Registrar desistência</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // painel solicitações de diaristas
+  const pendDiar = diaristas.filter(d=>d.tipo==='diarista');
+  const panelS   = document.getElementById('diaristaSolicPanel');
+  if(!pendDiar.length){ panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação de diarista para este jogo.</p></div>'; }
+  else{
+    panelS.innerHTML=pendDiar.map(d=>`<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${d.usuarioNome}</div>
+          <div class="card-sub">Taxa: R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</div>
+        </div>
+        <span class="badge ${d.status==='Aprovado'?'bg':d.status==='Rejeitado'?'br':'ba'}">${d.status}</span>
+      </div>
+      ${d.status==='Pendente'?`<div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn-sm ok" onclick="window.aprovarDiarista('${d.id}','${jogoId}')"><i class="ti ti-check"></i> Aprovar</button>
+        <button class="btn-sm no" onclick="window.rejeitarDiarista('${d.id}','${jogoId}')"><i class="ti ti-x"></i> Rejeitar</button>
+      </div>`:''}
+    </div>`).join('');
+  }
+};
+
+window.marcarPresenca = async function(usuarioId, jogoId, confirmado){
+  loading(true);
+  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',usuarioId),where('tipo','==','membro')));
+  if(snap.empty){
+    await addDoc(collection(db,'diaristas'),{jogoId,usuarioId,tipo:'membro',confirmado,criadoEm:serverTimestamp()});
+  } else {
+    await updateDoc(doc(db,'diaristas',snap.docs[0].id),{confirmado});
+  }
+  showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada.');
+  await carregarDiaristas(); loading(false);
+};
+
+window.aprovarDiarista = async function(id, jogoId){
+  loading(true);
+  await updateDoc(doc(db,'diaristas',id),{status:'Aprovado'});
+  showToast('✅ Diarista aprovado!');
+  await carregarDiaristas(); loading(false);
+};
+window.rejeitarDiarista = async function(id, jogoId){
+  loading(true);
+  await updateDoc(doc(db,'diaristas',id),{status:'Rejeitado'});
+  showToast('❌ Diarista rejeitado.');
+  await carregarDiaristas(); loading(false);
+};
+
+// ── DIARISTAS — LADO DO MEMBRO ──
+let _diaristasJogoAtualMembro = null;
+
+window.initDiaristasMembro = async function(){
+  const sel = document.getElementById('diaristasJogoSelMembro');
+  const jogosAbertos = allJogos.filter(j=>j.status==='Aberto');
+  sel.innerHTML='<option value="">Selecione um jogo...</option>'+
+    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+};
+
+window.carregarInfoDiaMembro = async function(){
+  const jogoId = document.getElementById('diaristasJogoSelMembro').value;
+  if(!jogoId){ document.getElementById('diaristaMemberPanel').innerHTML=''; return; }
+  _diaristasJogoAtualMembro = allJogos.find(j=>j.id===jogoId);
+  loading(true);
+  const [inscSnap,diarSnap] = await Promise.all([
+    getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID))),
+    getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID)))
+  ]);
+  const minhaInsc   = inscSnap.empty ? null : inscSnap.docs[0].data();
+  const meuRegistro = diarSnap.empty ? null : {id:diarSnap.docs[0].id,...diarSnap.docs[0].data()};
+  loading(false);
+
+  const panel = document.getElementById('diaristaMemberPanel');
+  const jogo  = _diaristasJogoAtualMembro;
+
+  let html=`<div class="card" style="background:var(--sur2);margin-bottom:10px">
+    <div class="card-title">${jogo.nome}</div>
+    <div class="card-sub">${jogo.dia}${jogo.mesAno?' · '+jogo.mesAno:''} · ${jogo.nivel}</div>
+    <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</span></div>
+  </div>`;
+
+  if(minhaInsc){
+    // é membro inscrito — pode confirmar presença
+    const conf = meuRegistro?.confirmado;
+    html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Confirmar minha presença</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn-sm ok" style="flex:1;justify-content:center" onclick="window.membroConfirmaPresenca('${jogoId}',true)">
+        <i class="ti ti-check"></i> Vou comparecer
+      </button>
+      <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.membroConfirmaPresenca('${jogoId}',false)">
+        <i class="ti ti-x"></i> Não vou comparecer
+      </button>
+    </div>
+    <div class="card" style="background:${conf===true?'var(--ok-bg)':conf===false?'#FEEEEE':'var(--sur2)'}">
+      <div style="font-size:13px;font-weight:500;color:${conf===true?'var(--ok)':conf===false?'#A32D2D':'var(--tx2)'}">
+        ${conf===true?'✅ Você confirmou presença':conf===false?'❌ Você registrou desistência':'⏳ Confirmação pendente'}
+      </div>
+    </div>`;
+  } else {
+    // não é membro — pode solicitar vaga de diarista
+    if(meuRegistro){
+      html+=`<div class="card" style="background:${meuRegistro.status==='Aprovado'?'var(--ok-bg)':meuRegistro.status==='Rejeitado'?'#FEEEEE':'var(--am-bg)'}">
+        <div style="font-size:14px;font-weight:600;margin-bottom:3px">Solicitação de diarista</div>
+        <div style="font-size:13px">Status: <strong>${meuRegistro.status}</strong></div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:3px">Taxa: R$ ${Number(meuRegistro.taxa||0).toFixed(2).replace('.',',')}</div>
+      </div>`;
+    } else {
+      html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Solicitar vaga de diarista</div>
+      <div class="card" style="background:var(--am-bg);margin-bottom:10px">
+        <div style="font-size:12px;color:var(--am);line-height:1.5">Como diarista, você paga uma taxa especial e participa se houver vagas disponíveis (por desistência de membros). A aprovação é feita pelo gerente.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="card" style="cursor:pointer;text-align:center;border:2px solid var(--or)" id="taxaOpt1" onclick="selecionarTaxa(${jogo.taxaSimples||15})">
+          <div style="font-size:18px;font-weight:700;color:var(--or)">R$ ${Number(jogo.taxaSimples||15).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:var(--tx2)">${jogo.taxaSimplesLabel||'Dia simples'}</div>
+        </div>
+        <div class="card" style="cursor:pointer;text-align:center;border:2px solid transparent" id="taxaOpt2" onclick="selecionarTaxa(${jogo.taxaEspecial||25})">
+          <div style="font-size:18px;font-weight:700;color:var(--or)">R$ ${Number(jogo.taxaEspecial||25).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:11px;color:var(--tx2)">${jogo.taxaEspecialLabel||'Com professor'}</div>
+        </div>
+      </div>
+      <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="window.solicitarDiaria('${jogoId}')">
+        <i class="ti ti-send"></i> Enviar solicitação
+      </button>`;
+    }
+  }
+  panel.innerHTML=html;
+};
+
+let _taxaSelecionada = 15;
+window.selecionarTaxa = function(v){
+  _taxaSelecionada=v;
+  const o1=document.getElementById('taxaOpt1');
+  const o2=document.getElementById('taxaOpt2');
+  if(o1) o1.style.borderColor = (o1.textContent.includes(String(v).replace('.',','))||o1.querySelector('div')?.textContent.includes(String(v).replace('.',',')))?'var(--or)':'transparent';
+  if(o2) o2.style.borderColor = (o2.textContent.includes(String(v).replace('.',','))||o2.querySelector('div')?.textContent.includes(String(v).replace('.',',')))?'var(--or)':'transparent';
+  // forma mais simples: compara data-taxa
+  if(o1) o1.style.borderColor = Number(o1.dataset.taxa)===v?'var(--or)':'transparent';
+  if(o2) o2.style.borderColor = Number(o2.dataset.taxa)===v?'var(--or)':'transparent';
+};
+
+window.membroConfirmaPresenca = async function(jogoId, confirmado){
+  loading(true);
+  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID),where('tipo','==','membro')));
+  if(snap.empty){
+    await addDoc(collection(db,'diaristas'),{jogoId,usuarioId:currentUID,usuarioNome:currentUser.nome,tipo:'membro',confirmado,criadoEm:serverTimestamp()});
+  } else {
+    await updateDoc(doc(db,'diaristas',snap.docs[0].id),{confirmado});
+  }
+  showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada. O gerente será notificado.');
+  await carregarInfoDiaMembro(); loading(false);
+};
+
+window.solicitarDiaria = async function(jogoId){
+  loading(true);
+  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('usuarioId','==',currentUID)));
+  if(!snap.empty){ loading(false); showToast('⚠️ Você já tem uma solicitação para este jogo!'); return; }
+  await addDoc(collection(db,'diaristas'),{
+    jogoId, usuarioId:currentUID, usuarioNome:currentUser.nome,
+    tipo:'diarista', taxa:_taxaSelecionada, status:'Pendente', criadoEm:serverTimestamp()
+  });
+  loading(false);
+  showToast('✅ Solicitação enviada! Aguardando aprovação do gerente.');
+  await carregarInfoDiaMembro();
 };
 
 // fecha modais ao clicar fora
