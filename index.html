@@ -5,172 +5,317 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calango Vôlei Clube</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+    collection, query, where, orderBy, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ====================================================
+  // 🔧 CONFIGURAÇÃO DO FIREBASE
+  // Cole aqui as credenciais do seu projeto Firebase
+  // (veja o guia CONFIGURACAO_FIREBASE.md)
+  // ====================================================
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDDzk-FP4pdTu5FR_g4D5qPdw3tbC_u3h0",
+    authDomain:        "calango-volei-clube.firebaseapp.com",
+    projectId:         "calango-volei-clube",
+    storageBucket:     "calango-volei-clube.firebasestorage.app",
+    messagingSenderId: "574421885522",
+    appId:             "1:574421885522:web:d41c657f17268391fb358b"
+  };
+  // ====================================================
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // expõe globalmente para o código abaixo
+  window._fb = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged, doc, setDoc, getDoc, getDocs, addDoc, updateDoc,
+    deleteDoc, collection, query, where, orderBy, serverTimestamp };
+</script>
+
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-:root {
-  --orange: #E07020;
-  --orange-dark: #c55c10;
-  --green-dark: #1a3a28;
-  --green-mid: #2E7D52;
-  --bg: #f5f4f0;
-  --surface: #ffffff;
-  --surface2: #f0eeea;
-  --text: #1a1a1a;
-  --text2: #666;
-  --border: rgba(0,0,0,0.1);
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+:root{
+  --or:#E07020;--or2:#c55c10;--gd:#1a3a28;--gm:#2E7D52;
+  --bg:#f5f4f0;--sur:#fff;--sur2:#f0eeea;
+  --tx:#1a1a1a;--tx2:#666;--bd:rgba(0,0,0,0.1);
 }
-html, body { height: 100%; background: var(--bg); }
-.app { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); position: relative; }
-.screen { display: none; flex-direction: column; flex: 1; }
-.screen.active { display: flex; }
+html,body{height:100%;background:var(--bg)}
+.app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);position:relative}
+.screen{display:none;flex-direction:column;flex:1}
+.screen.active{display:flex}
 
-/* LOGIN */
-.login-screen { background: var(--green-dark); align-items: center; justify-content: center; padding: 32px 24px; }
-.login-logo { width: 80px; height: 80px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 16px; }
-.login-title { color: #fff; font-size: 24px; font-weight: 600; margin-bottom: 4px; text-align: center; }
-.login-sub { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 32px; text-align: center; }
-.login-card { background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 360px; }
-.login-label { font-size: 13px; color: var(--text2); margin-bottom: 8px; display: block; font-weight: 500; }
-.login-card select { width: 100%; margin-bottom: 16px; padding: 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; color: var(--text); background: #fff; cursor: pointer; }
-.btn-primary { width: 100%; padding: 13px; background: var(--orange); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-.btn-primary:hover { background: var(--orange-dark); }
-.login-hint { font-size: 12px; color: #999; margin-top: 14px; text-align: center; }
+/* ── AUTH ── */
+.auth-screen{background:var(--gd);align-items:center;justify-content:center;padding:24px;min-height:100vh}
+.auth-logo{width:72px;height:72px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:12px}
+.auth-title{color:#fff;font-size:22px;font-weight:700;margin-bottom:4px;text-align:center}
+.auth-sub{color:rgba(255,255,255,.6);font-size:13px;margin-bottom:24px;text-align:center}
+.auth-card{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:360px}
+.auth-tabs{display:flex;border-radius:10px;background:var(--bg);padding:3px;margin-bottom:18px;gap:3px}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2);transition:all .15s}
+.auth-tab.active{background:#fff;color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.form-group{margin-bottom:12px}
+.form-label{font-size:12px;color:var(--tx2);margin-bottom:5px;display:block;font-weight:500}
+.form-control{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);font-size:14px;color:var(--tx);background:#fff;transition:border .15s}
+.form-control:focus{outline:none;border-color:var(--or)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-primary{width:100%;padding:12px;background:var(--or);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:4px}
+.btn-primary:hover{background:var(--or2)}
+.btn-primary:disabled{background:#ccc;cursor:not-allowed}
+.auth-switch{font-size:12px;color:var(--tx2);text-align:center;margin-top:12px}
+.auth-switch a{color:var(--or);cursor:pointer;text-decoration:underline}
+.auth-error{background:#FEEEEE;color:#A32D2D;font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:10px;display:none}
+.auth-section{font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--bd)}
 
-/* TOPBAR */
-.topbar { background: var(--green-dark); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
-.topbar-logo { display: flex; align-items: center; gap: 10px; }
-.topbar-ball { width: 32px; height: 32px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-.topbar-name { color: #fff; font-size: 16px; font-weight: 600; }
-.topbar-right { display: flex; align-items: center; gap: 8px; }
-.topbar-user { color: rgba(255,255,255,0.7); font-size: 13px; }
-.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; }
-.btn-logout { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); font-size: 12px; padding: 5px 12px; border-radius: 8px; cursor: pointer; }
-.btn-logout:hover { background: rgba(255,255,255,0.2); }
+/* ── TOPBAR ── */
+.topbar{background:var(--gd);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;flex-shrink:0}
+.topbar-logo{display:flex;align-items:center;gap:9px}
+.topbar-ball{width:30px;height:30px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;font-size:15px}
+.topbar-name{color:#fff;font-size:15px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar-user{color:rgba(255,255,255,.7);font-size:12px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.btn-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:11px;padding:5px 10px;border-radius:7px;cursor:pointer}
 
-/* CONTENT */
-.content { flex: 1; overflow-y: auto; padding: 16px; }
-.page { display: none; }
-.page.active { display: block; }
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:16px}
+.page{display:none}
+.page.active{display:block}
 
-/* BOTTOM NAV */
-.bottomnav { background: var(--green-dark); display: flex; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
-.bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 8px; background: none; border: none; color: rgba(255,255,255,0.45); font-size: 10px; font-weight: 500; cursor: pointer; transition: color 0.15s; }
-.bnav-btn i { font-size: 22px; }
-.bnav-btn.active { color: var(--orange); }
-.bnav-btn:hover:not(.active) { color: rgba(255,255,255,0.75); }
+/* ── BOTTOM NAV ── */
+.bottomnav{background:var(--gd);display:flex;border-top:1px solid rgba(255,255,255,.1);flex-shrink:0}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 7px;background:none;border:none;color:rgba(255,255,255,.4);font-size:10px;font-weight:500;cursor:pointer;transition:color .15s}
+.bnav-btn i{font-size:21px}
+.bnav-btn.active{color:var(--or)}
+.bnav-btn:hover:not(.active){color:rgba(255,255,255,.7)}
+.badge-nav{background:var(--or);color:#fff;font-size:9px;border-radius:10px;padding:1px 5px;margin-left:2px;vertical-align:middle}
 
-/* WELCOME BANNER */
-.welcome-banner { background: var(--green-dark); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
-.welcome-name { color: #fff; font-size: 18px; font-weight: 600; }
-.welcome-level { color: rgba(255,255,255,0.65); font-size: 13px; margin-top: 3px; }
-.welcome-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.welcome-badge { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); font-size: 12px; padding: 4px 12px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+/* ── CARDS ── */
+.card{background:var(--sur);border-radius:12px;border:1px solid var(--bd);padding:14px 16px;margin-bottom:10px}
+.card-title{font-size:15px;font-weight:600;color:var(--tx);margin-bottom:3px}
+.card-sub{font-size:13px;color:var(--tx2)}
+.card-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.card-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 
-/* SECTION */
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.section-title { font-size: 16px; font-weight: 600; color: var(--text); }
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.bg{background:#E6F7EF;color:#0F6E56}
+.ba{background:#FFF3DC;color:#854F0B}
+.br{background:#FEEEEE;color:#A32D2D}
+.bb{background:#E8F3FE;color:#185FA5}
+.bgy{background:#F0EEEA;color:#666}
+.bor{background:#FEF0E6;color:#E07020}
 
-/* CARDS */
-.card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; }
-.card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-.card-sub { font-size: 13px; color: var(--text2); }
-.card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+/* ── WELCOME BANNER ── */
+.banner{background:var(--gd);border-radius:13px;padding:16px;margin-bottom:16px}
+.banner-name{color:#fff;font-size:17px;font-weight:700}
+.banner-sub{color:rgba(255,255,255,.65);font-size:12px;margin-top:2px}
+.banner-chips{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.13);color:rgba(255,255,255,.9);font-size:11px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:4px}
 
-/* BADGES */
-.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.badge-green { background: #E6F7EF; color: #0F6E56; }
-.badge-amber { background: #FFF3DC; color: #854F0B; }
-.badge-red { background: #FEEEEE; color: #A32D2D; }
-.badge-blue { background: #E8F3FE; color: #185FA5; }
-.badge-gray { background: #F0EEEA; color: #666; }
-.badge-orange { background: #FEF0E6; color: #E07020; }
+/* ── SECTION ── */
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.sec-title{font-size:15px;font-weight:700;color:var(--tx)}
 
-/* BUTTONS */
-.btn-sm { padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s; }
-.btn-sm:hover { background: var(--surface2); }
-.btn-sm.primary { background: var(--orange); color: #fff; border-color: var(--orange); }
-.btn-sm.primary:hover { background: var(--orange-dark); }
-.btn-sm.success { background: #E6F7EF; color: #0F6E56; border-color: #9FE1CB; }
-.btn-sm.success:hover { background: #C0EDD8; }
-.btn-sm.danger { background: #FEEEEE; color: #A32D2D; border-color: #F7C1C1; }
-.btn-sm.danger:hover { background: #F7C1C1; }
+/* ── BUTTONS ── */
+.btn-sm{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--sur);color:var(--tx);display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.btn-sm:hover{background:var(--sur2)}
+.btn-sm.pr{background:var(--or);color:#fff;border-color:var(--or)}
+.btn-sm.pr:hover{background:var(--or2)}
+.btn-sm.ok{background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB}
+.btn-sm.no{background:#FEEEEE;color:#A32D2D;border-color:#F7C1C1}
+.btn-sm:disabled{opacity:.5;cursor:not-allowed}
 
-.btn-action { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); margin-bottom: 10px; width: 100%; text-align: left; transition: background 0.15s; }
-.btn-action:hover { background: var(--surface2); }
-.btn-action-icon { width: 40px; height: 40px; border-radius: 10px; background: #FEF0E6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.btn-action-icon i { font-size: 20px; color: var(--orange); }
-.btn-action-text { flex: 1; }
-.btn-action-title { font-size: 14px; font-weight: 600; color: var(--text); }
-.btn-action-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.btn-action{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;border:1px solid var(--bd);background:var(--sur);color:var(--tx);margin-bottom:9px;width:100%;text-align:left;transition:background .15s}
+.btn-action:hover{background:var(--sur2)}
+.bai{width:40px;height:40px;border-radius:10px;background:#FEF0E6;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bai i{font-size:20px;color:var(--or)}
+.bat{flex:1}
+.bat-title{font-size:14px;font-weight:600;color:var(--tx)}
+.bat-sub{font-size:11px;color:var(--tx2);margin-top:1px}
 
-/* STATS */
-.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-.stat-card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 14px 10px; text-align: center; }
-.stat-num { font-size: 26px; font-weight: 700; color: var(--text); }
-.stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--sur);border-radius:11px;border:1px solid var(--bd);padding:12px 8px;text-align:center}
+.stat-n{font-size:24px;font-weight:700;color:var(--tx)}
+.stat-l{font-size:10px;color:var(--tx2);margin-top:1px}
 
-/* FORM */
-.form-group { margin-bottom: 14px; }
-.form-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 500; }
-.form-control { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; color: var(--text); background: var(--surface); }
-.form-control:focus { outline: 2px solid var(--orange); border-color: var(--orange); }
+/* ── VALOR ── */
+.valor-box{background:#E6F7EF;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.valor-label{font-size:12px;color:#0F6E56;font-weight:500}
+.valor-num{font-size:16px;font-weight:700;color:#0F6E56}
 
-/* MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
-.modal-overlay.open { display: flex; }
-.modal { background: var(--surface); border-radius: 16px; padding: 22px; width: 100%; max-width: 360px; max-height: 90vh; overflow-y: auto; }
-.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
-.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
-.modal-actions button { flex: 1; padding: 11px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--sur);border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:14px;color:var(--tx)}
+.modal-actions{display:flex;gap:8px;margin-top:14px}
+.modal-actions button{flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
 
-/* TOAST */
-.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a3a28; color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; }
-.toast.show { opacity: 1; }
+/* ── TOAST ── */
+.toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:300;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
 
-/* EMPTY */
-.empty { text-align: center; padding: 40px 16px; color: var(--text2); }
-.empty i { font-size: 40px; margin-bottom: 10px; display: block; opacity: 0.4; }
-.empty-msg { font-size: 14px; line-height: 1.5; }
+/* ── EMPTY ── */
+.empty{text-align:center;padding:36px 16px;color:var(--tx2)}
+.empty i{font-size:38px;margin-bottom:8px;display:block;opacity:.35}
+.empty p{font-size:13px;line-height:1.5}
 
-/* DENIED */
-.denied-screen { background: var(--green-dark); align-items: center; justify-content: center; padding: 32px 24px; text-align: center; }
-.denied-icon { font-size: 64px; margin-bottom: 16px; }
-.denied-title { color: #fff; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
-.denied-sub { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 24px; }
+/* ── RELATORIO ── */
+.rel-month-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.rel-month-row select,.rel-month-row input{flex:1;padding:9px 11px;border-radius:9px;border:1px solid var(--bd);font-size:13px;color:var(--tx);background:#fff}
+.rel-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.rel-table th{background:var(--gd);color:#fff;padding:8px 10px;text-align:left;font-weight:600}
+.rel-table td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--tx)}
+.rel-table tr:last-child td{border-bottom:none}
+.rel-total{background:#FEF0E6;color:var(--or);font-weight:700;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:8px;display:flex;justify-content:space-between}
 
-hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+/* ── LOADING ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:12px}
+.spinner{width:36px;height:36px;border:3px solid var(--bd);border-top-color:var(--or);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay p{font-size:13px;color:var(--tx2)}
 
-@media (min-width: 430px) {
-  .app { box-shadow: 0 0 40px rgba(0,0,0,0.12); }
-  body { display: flex; align-items: flex-start; justify-content: center; padding: 20px 0; }
-  html { background: #e8e4dc; }
+hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
+
+@media(min-width:430px){
+  .app{box-shadow:0 0 40px rgba(0,0,0,.12)}
+  body{display:flex;align-items:flex-start;justify-content:center;padding:20px 0}
+  html{background:#ddd}
 }
 </style>
 </head>
 <body>
 <div class="app" id="app">
 
-<!-- ===== LOGIN ===== -->
-<div class="screen active login-screen" id="screenLogin">
-  <div class="login-logo">🏐</div>
-  <div class="login-title">Calango Vôlei Clube</div>
-  <div class="login-sub">Sistema de Gestão de Membros</div>
-  <div class="login-card">
-    <label class="login-label">Selecione seu perfil</label>
-    <select id="loginSelect">
-      <option value="">— Selecione um usuário —</option>
-      <option value="ana">Ana Souza · Membro (Intermediário)</option>
-      <option value="joao">João Lima · Membro (Iniciante)</option>
-      <option value="carla">Carla Mendes · Membro (Avançado)</option>
-      <option value="gerente">Ricardo Santos · Gerente</option>
-    </select>
-    <button class="btn-primary" onclick="doLogin()">Entrar no App</button>
-    <div class="login-hint">⚡ Versão demonstração — nenhuma senha necessária</div>
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>Carregando...</p>
+</div>
+
+<!-- ===== TELA DE AUTENTICAÇÃO ===== -->
+<div class="screen active auth-screen" id="screenAuth">
+  <div class="auth-logo">🏐</div>
+  <div class="auth-title">Calango Vôlei Clube</div>
+  <div class="auth-sub">Sistema de Gestão de Membros</div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Entrar</button>
+      <button class="auth-tab" id="tabCadastro" onclick="switchTab('cadastro')">Cadastrar-se</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="formLogin">
+      <div class="auth-error" id="loginError"></div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-control" id="loginEmail" type="email" placeholder="seu@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input class="form-control" id="loginSenha" type="password" placeholder="Sua senha">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Entrar no app</button>
+    </div>
+
+    <!-- CADASTRO -->
+    <div id="formCadastro" style="display:none">
+      <div class="auth-error" id="cadastroError"></div>
+
+      <div class="auth-section">Dados pessoais</div>
+      <div class="form-group">
+        <label class="form-label">Nome completo *</label>
+        <input class="form-control" id="cNome" placeholder="Seu nome completo">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">CPF *</label>
+          <input class="form-control" id="cCpf" placeholder="000.000.000-00" maxlength="14" oninput="maskCPF(this)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de nascimento *</label>
+          <input class="form-control" id="cNascimento" type="date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Telefone *</label>
+          <input class="form-control" id="cTelefone" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nível *</label>
+          <select class="form-control" id="cNivel">
+            <option value="">Selecione...</option>
+            <option>Iniciante</option>
+            <option>Intermediário</option>
+            <option>Avançado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="auth-section">Contato de emergência</div>
+      <div class="form-group">
+        <label class="form-label">Nome do contato *</label>
+        <input class="form-control" id="cEmergenciaNome" placeholder="Nome do familiar ou amigo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefone do contato *</label>
+        <input class="form-control" id="cEmergenciaTel" placeholder="(00) 00000-0000" maxlength="15" oninput="maskPhone(this)">
+      </div>
+
+      <div class="auth-section">Saúde</div>
+      <div class="form-group">
+        <label class="form-label">Possui alguma doença ou condição de saúde?</label>
+        <input class="form-control" id="cDoenca" placeholder="Deixe em branco se não houver">
+      </div>
+
+      <div class="auth-section">Como nos conheceu?</div>
+      <div class="form-group">
+        <select class="form-control" id="cConheceu">
+          <option value="">Selecione...</option>
+          <option>Indicação de amigo/familiar</option>
+          <option>Instagram / Redes sociais</option>
+          <option>Pesquisa no Google</option>
+          <option>Passei em frente à quadra</option>
+          <option>Outro</option>
+        </select>
+      </div>
+
+      <div class="auth-section">Acesso ao app</div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input class="form-control" id="cEmail" type="email" placeholder="seu@email.com">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Senha *</label>
+          <input class="form-control" id="cSenha" type="password" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar senha *</label>
+          <input class="form-control" id="cSenha2" type="password" placeholder="Repita a senha">
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="doCadastro()">Criar minha conta</button>
+      <p style="font-size:11px;color:var(--tx2);margin-top:10px;text-align:center">
+        Ao se cadastrar você concorda com as regras do clube.
+      </p>
+    </div>
   </div>
 </div>
 
-<!-- ===== MAIN APP ===== -->
+<!-- ===== APP PRINCIPAL ===== -->
 <div class="screen" id="screenMain">
   <div class="topbar">
     <div class="topbar-logo">
@@ -184,767 +329,930 @@ hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
     </div>
   </div>
 
-  <!-- MEMBER AREA -->
-  <div id="memberArea" style="display:none; flex:1; display:none; flex-direction:column;">
-
+  <!-- ÁREA MEMBRO -->
+  <div id="memberArea" style="display:none;flex:1;flex-direction:column">
     <div class="content" id="memberContent">
 
-      <!-- HOME -->
+      <!-- HOME MEMBRO -->
       <div class="page active" id="pageMemberHome">
-        <div class="welcome-banner">
-          <div class="welcome-name" id="welcomeName"></div>
-          <div class="welcome-level" id="welcomeLevel"></div>
-          <div class="welcome-badges">
-            <span class="welcome-badge">🏐 <span id="wbJogos"></span> jogos disponíveis</span>
-            <span class="welcome-badge">👥 <span id="wbDuplas"></span> duplas</span>
-            <span class="welcome-badge">✅ <span id="wbInscricoes"></span> inscrições</span>
+        <div class="banner">
+          <div class="banner-name" id="welcomeName"></div>
+          <div class="banner-sub" id="welcomeLevel"></div>
+          <div class="banner-chips">
+            <span class="chip"><i class="ti ti-calendar" style="font-size:13px"></i> <span id="wbJogos">0</span> jogos</span>
+            <span class="chip"><i class="ti ti-users" style="font-size:13px"></i> <span id="wbDuplas">0</span> duplas</span>
+            <span class="chip"><i class="ti ti-cash" style="font-size:13px"></i> R$ <span id="wbTotal">0</span> este mês</span>
           </div>
         </div>
-        <div class="section-header">
-          <div class="section-title">Jogos para o seu nível</div>
-          <span class="badge badge-green" id="badgeJogosCount"></span>
+        <div class="sec-header">
+          <div class="sec-title">Jogos disponíveis</div>
+          <span class="badge bb" id="badgeJogosCount">0</span>
         </div>
         <div id="jogosListMember"></div>
       </div>
 
-      <!-- INSCRIÇÕES -->
+      <!-- INSCRIÇÕES MEMBRO -->
       <div class="page" id="pageMemberInscricoes">
-        <div class="section-header">
-          <div class="section-title">Minhas Inscrições</div>
+        <div class="sec-header">
+          <div class="sec-title">Minhas inscrições</div>
+        </div>
+        <div class="card" style="background:#FEF0E6;border-color:#FDDCB5;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:12px;color:#854F0B;font-weight:500">Total a pagar este mês</div>
+              <div style="font-size:22px;font-weight:700;color:var(--or)" id="totalMesInscricoes">R$ 0,00</div>
+            </div>
+            <i class="ti ti-cash" style="font-size:32px;color:var(--or);opacity:.4"></i>
+          </div>
         </div>
         <div id="minhasInscricoesList"></div>
       </div>
 
-      <!-- DUPLAS -->
+      <!-- DUPLAS MEMBRO -->
       <div class="page" id="pageMemberDuplas">
-        <div class="section-header">
-          <div class="section-title">Minhas Duplas</div>
-          <button class="btn-sm primary" onclick="openModalDupla()">
-            <i class="ti ti-plus"></i> Nova dupla
-          </button>
+        <div class="sec-header">
+          <div class="sec-title">Minhas duplas</div>
+          <button class="btn-sm pr" onclick="openModalDupla()"><i class="ti ti-plus"></i> Nova</button>
         </div>
         <div id="minhasDuplasList"></div>
       </div>
 
-      <!-- PERFIL -->
+      <!-- PERFIL MEMBRO -->
       <div class="page" id="pageMemberPerfil">
-        <div class="section-header">
-          <div class="section-title">Meu Perfil</div>
-        </div>
+        <div class="sec-title" style="margin-bottom:12px">Meu perfil</div>
         <div class="card" id="perfilCard"></div>
         <br>
-        <div class="section-title" style="margin-bottom:12px; font-size:15px">Solicitar mudança de nível</div>
+        <div class="sec-title" style="font-size:14px;margin-bottom:10px">Solicitar mudança de nível</div>
         <div class="card">
           <div class="form-group">
             <label class="form-label">Nível desejado</label>
             <select class="form-control" id="selectNovoNivel">
-              <option value="Iniciante">Iniciante</option>
-              <option value="Intermediário">Intermediário</option>
-              <option value="Avançado">Avançado</option>
+              <option>Iniciante</option>
+              <option>Intermediário</option>
+              <option>Avançado</option>
             </select>
           </div>
-          <button class="btn-sm primary" style="width:100%; justify-content:center" onclick="solicitarNivel()">
+          <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="solicitarNivel()">
             <i class="ti ti-send"></i> Enviar solicitação
           </button>
         </div>
       </div>
 
     </div>
-
-    <!-- MEMBER NAV -->
     <div class="bottomnav" id="memberNav">
-      <button class="bnav-btn active" onclick="memberPage('pageMemberHome', this)">
-        <i class="ti ti-home"></i>Início
-      </button>
-      <button class="bnav-btn" onclick="memberPage('pageMemberInscricoes', this)">
-        <i class="ti ti-calendar-check"></i>Inscrições
-      </button>
-      <button class="bnav-btn" onclick="memberPage('pageMemberDuplas', this)">
-        <i class="ti ti-users"></i>Duplas
-      </button>
-      <button class="bnav-btn" onclick="memberPage('pageMemberPerfil', this)">
-        <i class="ti ti-user"></i>Perfil
-      </button>
+      <button class="bnav-btn active" onclick="memberPage('pageMemberHome',this)"><i class="ti ti-home"></i>Início</button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberInscricoes',this)"><i class="ti ti-calendar-check"></i>Inscrições</button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberDuplas',this)"><i class="ti ti-users"></i>Duplas</button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberPerfil',this)"><i class="ti ti-user"></i>Perfil</button>
     </div>
   </div>
 
-  <!-- GERENTE AREA -->
-  <div id="gerenteArea" style="display:none; flex:1; flex-direction:column;">
-
+  <!-- ÁREA GERENTE / COORDENADOR -->
+  <div id="gerenteArea" style="display:none;flex:1;flex-direction:column">
     <div class="content" id="gerenteContent">
 
       <!-- HOME GERENTE -->
       <div class="page active" id="pageGerenteHome">
-        <div class="welcome-banner">
-          <div class="welcome-name" id="welcomeNameGerente"></div>
-          <div class="welcome-level">Área Administrativa · Gerente</div>
+        <div class="banner">
+          <div class="banner-name" id="welcomeNameG"></div>
+          <div class="banner-sub" id="welcomeRoleG"></div>
         </div>
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-num" id="statMembros">0</div>
-            <div class="stat-label">Membros</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num" id="statPend">0</div>
-            <div class="stat-label">Pendentes</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num" id="statJogos">0</div>
-            <div class="stat-label">Jogos</div>
-          </div>
+        <div class="stats">
+          <div class="stat"><div class="stat-n" id="statMembros">—</div><div class="stat-l">Membros</div></div>
+          <div class="stat"><div class="stat-n" id="statPend">—</div><div class="stat-l">Pendentes</div></div>
+          <div class="stat"><div class="stat-n" id="statJogos">—</div><div class="stat-l">Jogos</div></div>
         </div>
-
-        <button class="btn-action" onclick="gerentePage('pageGerenteInscricoes', document.querySelectorAll('#gerenteNav .bnav-btn')[1])">
-          <div class="btn-action-icon"><i class="ti ti-clipboard-check"></i></div>
-          <div class="btn-action-text">
-            <div class="btn-action-title">Aprovar Inscrições</div>
-            <div class="btn-action-sub" id="hintInscricoes">—</div>
-          </div>
+        <button class="btn-action" onclick="gerentePage('pageGerenteInscricoes',document.querySelectorAll('#gerenteNav .bnav-btn')[1])">
+          <div class="bai"><i class="ti ti-clipboard-check"></i></div>
+          <div class="bat"><div class="bat-title">Aprovar inscrições</div><div class="bat-sub" id="hintInsc">—</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
-        <button class="btn-action" onclick="gerentePage('pageGerenteNivel', document.querySelectorAll('#gerenteNav .bnav-btn')[2])">
-          <div class="btn-action-icon"><i class="ti ti-chart-arrows-vertical"></i></div>
-          <div class="btn-action-text">
-            <div class="btn-action-title">Solicitações de Nível</div>
-            <div class="btn-action-sub" id="hintNivel">—</div>
-          </div>
+        <button class="btn-action" onclick="gerentePage('pageGerenteNivel',document.querySelectorAll('#gerenteNav .bnav-btn')[2])">
+          <div class="bai"><i class="ti ti-chart-arrows-vertical"></i></div>
+          <div class="bat"><div class="bat-title">Solicitações de nível</div><div class="bat-sub" id="hintNivel">—</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
-        <button class="btn-action" onclick="gerentePage('pageGerenteJogos', document.querySelectorAll('#gerenteNav .bnav-btn')[3])">
-          <div class="btn-action-icon"><i class="ti ti-calendar-plus"></i></div>
-          <div class="btn-action-text">
-            <div class="btn-action-title">Configurar Jogos</div>
-            <div class="btn-action-sub">Gerenciar calendário</div>
-          </div>
+        <button class="btn-action" onclick="gerentePage('pageGerenteJogos',document.querySelectorAll('#gerenteNav .bnav-btn')[3])">
+          <div class="bai"><i class="ti ti-calendar-plus"></i></div>
+          <div class="bat"><div class="bat-title">Configurar jogos</div><div class="bat-sub">Gerenciar calendário e valores</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
-        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios', document.querySelectorAll('#gerenteNav .bnav-btn')[4])">
-          <div class="btn-action-icon"><i class="ti ti-users"></i></div>
-          <div class="btn-action-text">
-            <div class="btn-action-title">Gerenciar Membros</div>
-            <div class="btn-action-sub" id="hintMembros">—</div>
-          </div>
+        <button class="btn-action" onclick="gerentePage('pageGerenteRelatorio',document.querySelectorAll('#gerenteNav .bnav-btn')[4])">
+          <div class="bai"><i class="ti ti-report-analytics"></i></div>
+          <div class="bat"><div class="bat-title">Relatório mensal</div><div class="bat-sub">Inscritos e valores por mês</div></div>
+          <i class="ti ti-chevron-right" style="color:#ccc"></i>
+        </button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[5])">
+          <div class="bai"><i class="ti ti-users"></i></div>
+          <div class="bat"><div class="bat-title">Gerenciar membros</div><div class="bat-sub" id="hintMembros">—</div></div>
           <i class="ti ti-chevron-right" style="color:#ccc"></i>
         </button>
       </div>
 
       <!-- INSCRIÇÕES GERENTE -->
       <div class="page" id="pageGerenteInscricoes">
-        <div class="section-header">
-          <div class="section-title">Inscrições Pendentes</div>
-        </div>
+        <div class="sec-header"><div class="sec-title">Inscrições pendentes</div></div>
         <div id="inscricoesPendList"></div>
       </div>
 
       <!-- NÍVEL GERENTE -->
       <div class="page" id="pageGerenteNivel">
-        <div class="section-header">
-          <div class="section-title">Solicitações de Nível</div>
-        </div>
+        <div class="sec-header"><div class="sec-title">Solicitações de nível</div></div>
         <div id="nivelSolicList"></div>
       </div>
 
       <!-- JOGOS GERENTE -->
       <div class="page" id="pageGerenteJogos">
-        <div class="section-header">
-          <div class="section-title">Configurar Jogos</div>
-          <button class="btn-sm primary" onclick="openModalNovoJogo()">
-            <i class="ti ti-plus"></i> Novo jogo
-          </button>
+        <div class="sec-header">
+          <div class="sec-title">Configurar jogos</div>
+          <button class="btn-sm pr" onclick="openModalNovoJogo()"><i class="ti ti-plus"></i> Novo</button>
         </div>
         <div id="jogosGerenteList"></div>
       </div>
 
+      <!-- RELATÓRIO -->
+      <div class="page" id="pageGerenteRelatorio">
+        <div class="sec-header"><div class="sec-title">Relatório mensal</div></div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="rel-month-row">
+            <select id="relMes">
+              <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+              <option value="03">Março</option><option value="04">Abril</option>
+              <option value="05">Maio</option><option value="06">Junho</option>
+              <option value="07">Julho</option><option value="08">Agosto</option>
+              <option value="09">Setembro</option><option value="10">Outubro</option>
+              <option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <input type="number" id="relAno" value="2026" min="2024" max="2030" style="width:80px">
+            <button class="btn-sm pr" onclick="gerarRelatorio()"><i class="ti ti-search"></i></button>
+          </div>
+          <div id="relatorioContent">
+            <div class="empty"><i class="ti ti-report"></i><p>Selecione o mês e clique em pesquisar</p></div>
+          </div>
+        </div>
+      </div>
+
       <!-- USUÁRIOS GERENTE -->
       <div class="page" id="pageGerenteUsuarios">
-        <div class="section-header">
-          <div class="section-title">Membros Cadastrados</div>
-        </div>
+        <div class="sec-header"><div class="sec-title">Membros cadastrados</div></div>
         <div id="usuariosGerenteList"></div>
       </div>
 
     </div>
-
-    <!-- GERENTE NAV -->
     <div class="bottomnav" id="gerenteNav">
-      <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome', this)">
-        <i class="ti ti-home"></i>Início
-      </button>
-      <button class="bnav-btn" onclick="gerentePage('pageGerenteInscricoes', this)">
-        <i class="ti ti-clipboard-check"></i>Inscrições
-      </button>
-      <button class="bnav-btn" onclick="gerentePage('pageGerenteNivel', this)">
-        <i class="ti ti-chart-arrows-vertical"></i>Nível
-      </button>
-      <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos', this)">
-        <i class="ti ti-calendar"></i>Jogos
-      </button>
-      <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios', this)">
-        <i class="ti ti-users"></i>Membros
-      </button>
+      <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome',this)"><i class="ti ti-home"></i>Início</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteInscricoes',this)"><i class="ti ti-clipboard-check"></i>Inscrições</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteNivel',this)"><i class="ti ti-chart-arrows-vertical"></i>Nível</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos',this)"><i class="ti ti-calendar"></i>Jogos</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteRelatorio',this)"><i class="ti ti-report-analytics"></i>Relatório</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this)"><i class="ti ti-users"></i>Membros</button>
     </div>
   </div>
 
 </div><!-- screenMain -->
 
-<!-- ===== MODALS ===== -->
+<!-- ===== MODAIS ===== -->
 <div class="modal-overlay" id="modalInscricao">
   <div class="modal">
-    <div class="modal-title">🏐 Inscrição no Jogo</div>
+    <div class="modal-title">🏐 Inscrição no jogo</div>
     <div id="modalInscricaoContent"></div>
     <div class="modal-actions">
       <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalInscricao')">Cancelar</button>
-      <button class="btn-sm primary" style="flex:1;justify-content:center" onclick="confirmarInscricao()">Confirmar</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarInscricao()">Confirmar</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modalDupla">
   <div class="modal">
-    <div class="modal-title">👥 Criar Nova Dupla</div>
+    <div class="modal-title">👥 Nova dupla</div>
     <div class="form-group">
       <label class="form-label">Nome da dupla</label>
       <input class="form-control" id="duplaNome" placeholder="Ex: Dupla Campeã">
     </div>
     <div class="form-group">
-      <label class="form-label">Escolher parceiro(a)</label>
-      <select class="form-control" id="duplaJogador2">
-        <option value="">Selecione...</option>
-      </select>
+      <label class="form-label">Parceiro(a)</label>
+      <select class="form-control" id="duplaJogador2"><option value="">Selecione...</option></select>
     </div>
     <div class="modal-actions">
       <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalDupla')">Cancelar</button>
-      <button class="btn-sm primary" style="flex:1;justify-content:center" onclick="confirmarDupla()">Criar dupla</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarDupla()">Criar dupla</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modalNovoJogo">
   <div class="modal">
-    <div class="modal-title">📅 Configurar Novo Jogo</div>
+    <div class="modal-title">📅 Configurar jogo</div>
+    <input type="hidden" id="jogoEditId">
     <div class="form-group">
       <label class="form-label">Nome do jogo</label>
-      <input class="form-control" id="jogoNome" placeholder="Ex: Treino das Terças">
+      <input class="form-control" id="jogoNome" placeholder="Ex: Treino das Terças — Professor">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Dia da semana</label>
+        <select class="form-control" id="jogoDia">
+          <option>Segunda</option><option>Terça</option><option>Quarta</option>
+          <option>Quinta</option><option>Sexta</option><option>Sábado</option><option>Domingo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mês/Ano</label>
+        <input class="form-control" id="jogoMesAno" placeholder="Ex: 06/2026">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-control" id="jogoTipo">
+          <option>Individual</option><option>Dupla</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nível</label>
+        <select class="form-control" id="jogoNivel">
+          <option>Iniciante</option><option>Intermediário</option><option>Avançado</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Vagas</label>
+        <input class="form-control" id="jogoVagas" type="number" value="12" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor (R$)</label>
+        <input class="form-control" id="jogoValor" type="number" value="0" min="0" step="0.01" placeholder="0,00">
+      </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Dia da semana</label>
-      <select class="form-control" id="jogoDia">
-        <option>Segunda</option><option>Terça</option><option>Quarta</option>
-        <option>Quinta</option><option>Sexta</option><option>Sábado</option><option>Domingo</option>
+      <label class="form-label">Com professor?</label>
+      <select class="form-control" id="jogoProfessor">
+        <option value="nao">Não</option>
+        <option value="sim">Sim</option>
       </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Tipo de jogo</label>
-      <select class="form-control" id="jogoTipo">
-        <option>Individual</option>
-        <option>Dupla</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Nível</label>
-      <select class="form-control" id="jogoNivel">
-        <option>Iniciante</option>
-        <option>Intermediário</option>
-        <option>Avançado</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Número de vagas</label>
-      <input class="form-control" id="jogoVagas" type="number" value="12" min="1" max="50">
     </div>
     <div class="modal-actions">
       <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalNovoJogo')">Cancelar</button>
-      <button class="btn-sm primary" style="flex:1;justify-content:center" onclick="confirmarNovoJogo()">Salvar jogo</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarNovoJogo()">Salvar</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
+<div class="modal-overlay" id="modalMembro">
+  <div class="modal">
+    <div class="modal-title">👤 Dados do membro</div>
+    <div id="modalMembroContent"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalMembro')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-</div><!-- app -->
+<script type="module">
+// aguarda o Firebase ser inicializado
+await new Promise(r => {
+  const t = setInterval(() => { if(window._fb){ clearInterval(t); r(); } }, 50);
+});
+const { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged, doc, setDoc, getDoc, getDocs, addDoc, updateDoc,
+  deleteDoc, collection, query, where, orderBy, serverTimestamp } = window._fb;
 
-<script>
-// ========== DADOS INICIAIS ==========
-const USUARIOS = [
-  { id:'ana',     nome:'Ana Souza',     email:'ana@calango.com',     tipo:'Membro',  nivel:'Intermediário', status:'Ativo' },
-  { id:'joao',    nome:'João Lima',     email:'joao@calango.com',    tipo:'Membro',  nivel:'Iniciante',     status:'Ativo' },
-  { id:'carla',   nome:'Carla Mendes',  email:'carla@calango.com',   tipo:'Membro',  nivel:'Avançado',      status:'Ativo' },
-  { id:'gerente', nome:'Ricardo Santos',email:'ricardo@calango.com', tipo:'Gerente', nivel:'',              status:'Ativo' }
-];
+// ── Estado global ──
+let currentUser = null;    // dados do Firestore
+let currentUID  = null;    // UID do Firebase Auth
+let allUsers    = [];      // cache de usuários
+let allJogos    = [];      // cache de jogos
+let modalJogoAtual = null;
 
-let JOGOS = [
-  { id:'j1', nome:'Treino das Terças',  dia:'Terça',  tipo:'Individual', nivel:'Iniciante',     status:'Aberto',  vagas:10 },
-  { id:'j2', nome:'Treino das Terças',  dia:'Terça',  tipo:'Individual', nivel:'Intermediário', status:'Aberto',  vagas:12 },
-  { id:'j3', nome:'Treino das Quintas', dia:'Quinta', tipo:'Dupla',      nivel:'Intermediário', status:'Aberto',  vagas:8  },
-  { id:'j4', nome:'Treino de Sábado',   dia:'Sábado', tipo:'Individual', nivel:'Avançado',      status:'Aberto',  vagas:14 },
-  { id:'j5', nome:'Torneio de Duplas',  dia:'Sábado', tipo:'Dupla',      nivel:'Avançado',      status:'Fechado', vagas:8  },
-];
+function loading(show){ document.getElementById('loadingOverlay').style.display = show?'flex':'none'; }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
-let INSCRICOES = [
-  { id:'i1', usuarioId:'ana',  jogoId:'j3', status:'Aprovado', data:'01/06/2026' },
-  { id:'i2', usuarioId:'joao', jogoId:'j1', status:'Pendente', data:'03/06/2026' },
-];
+// ── Tabs login/cadastro ──
+window.switchTab = function(tab){
+  document.getElementById('formLogin').style.display   = tab==='login'?'block':'none';
+  document.getElementById('formCadastro').style.display = tab==='cadastro'?'block':'none';
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabCadastro').classList.toggle('active', tab==='cadastro');
+};
 
-let DUPLAS = [
-  { id:'d1', nome:'Dupla Estrela', jogador1:'ana', jogador2:'carla', status:'Ativa', criadoPor:'ana' },
-];
+// ── Máscaras ──
+window.maskCPF = function(el){
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>9) v=v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
+  else if(v.length>6) v=v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
+  else if(v.length>3) v=v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
+  el.value=v;
+};
+window.maskPhone = function(el){
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>6) v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  else if(v.length>2) v=v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
+  el.value=v;
+};
 
-let SOLICITACOES_NIVEL = [
-  { id:'n1', usuarioId:'joao', nivelAtual:'Iniciante', nivelSolicitado:'Intermediário', status:'Pendente', data:'02/06/2026' },
-];
-
-let currentUser = null;
-let modalJogoSelecionado = null;
-
-// ========== LOGIN ==========
-function doLogin() {
-  const sel = document.getElementById('loginSelect').value;
-  if (!sel) { showToast('⚠️ Selecione um perfil para continuar'); return; }
-  currentUser = USUARIOS.find(u => u.id === sel);
-  document.getElementById('screenLogin').classList.remove('active');
-  document.getElementById('screenMain').classList.add('active');
-  initApp();
-}
-
-function doLogout() {
-  currentUser = null;
-  document.getElementById('screenMain').classList.remove('active');
-  document.getElementById('screenLogin').classList.add('active');
-  document.getElementById('loginSelect').value = '';
-  document.getElementById('memberArea').style.display = 'none';
-  document.getElementById('gerenteArea').style.display = 'none';
-}
-
-// ========== INIT APP ==========
-function initApp() {
-  const initials = currentUser.nome.split(' ').map(n => n[0]).slice(0, 2).join('');
-  document.getElementById('topAvatar').textContent = initials;
-  document.getElementById('topUserName').textContent = currentUser.nome.split(' ')[0];
-
-  if (currentUser.tipo === 'Gerente') {
-    document.getElementById('gerenteArea').style.display = 'flex';
-    document.getElementById('memberArea').style.display = 'none';
-    initGerentePage();
-  } else {
-    document.getElementById('memberArea').style.display = 'flex';
-    document.getElementById('gerenteArea').style.display = 'none';
-    initMemberPage();
+// ── LOGIN ──
+window.doLogin = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha  = document.getElementById('loginSenha').value;
+  const errEl  = document.getElementById('loginError');
+  errEl.style.display='none';
+  if(!email||!senha){ errEl.textContent='Preencha email e senha.'; errEl.style.display='block'; return; }
+  loading(true);
+  try{
+    await signInWithEmailAndPassword(auth, email, senha);
+  } catch(e){
+    loading(false);
+    errEl.textContent = e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'
+      ? 'Email ou senha incorretos.' : 'Erro ao entrar. Tente novamente.';
+    errEl.style.display='block';
   }
+};
+
+// ── CADASTRO ──
+window.doCadastro = async function(){
+  const errEl = document.getElementById('cadastroError');
+  errEl.style.display='none';
+  const nome      = document.getElementById('cNome').value.trim();
+  const cpf       = document.getElementById('cCpf').value.trim();
+  const nasc      = document.getElementById('cNascimento').value;
+  const tel       = document.getElementById('cTelefone').value.trim();
+  const nivel     = document.getElementById('cNivel').value;
+  const eNome     = document.getElementById('cEmergenciaNome').value.trim();
+  const eTel      = document.getElementById('cEmergenciaTel').value.trim();
+  const doenca    = document.getElementById('cDoenca').value.trim();
+  const conheceu  = document.getElementById('cConheceu').value;
+  const email     = document.getElementById('cEmail').value.trim();
+  const senha     = document.getElementById('cSenha').value;
+  const senha2    = document.getElementById('cSenha2').value;
+
+  if(!nome||!cpf||!nasc||!tel||!nivel||!eNome||!eTel||!conheceu||!email||!senha){
+    errEl.textContent='Preencha todos os campos obrigatórios (*).'; errEl.style.display='block'; return;
+  }
+  if(senha!==senha2){ errEl.textContent='As senhas não conferem.'; errEl.style.display='block'; return; }
+  if(senha.length<6){ errEl.textContent='A senha deve ter pelo menos 6 caracteres.'; errEl.style.display='block'; return; }
+
+  loading(true);
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, senha);
+    const uid  = cred.user.uid;
+    await setDoc(doc(db,'usuarios',uid),{
+      nome, cpf, dataNascimento:nasc, telefone:tel, nivel, status:'Ativo',
+      emergenciaNome:eNome, emergenciaTel:eTel, doenca:doenca||'Nenhuma',
+      comoConheceu:conheceu, email, tipo:'Membro',
+      criadoEm: serverTimestamp()
+    });
+  } catch(e){
+    loading(false);
+    errEl.textContent = e.code==='auth/email-already-in-use'
+      ? 'Este email já está cadastrado.' : 'Erro ao criar conta: '+e.message;
+    errEl.style.display='block';
+  }
+};
+
+// ── LOGOUT ──
+window.doLogout = async function(){
+  await signOut(auth);
+  document.getElementById('screenMain').classList.remove('active');
+  document.getElementById('screenAuth').classList.add('active');
+  document.getElementById('memberArea').style.display='none';
+  document.getElementById('gerenteArea').style.display='none';
+  currentUser=null; currentUID=null;
+};
+
+// ── AUTH STATE ──
+onAuthStateChanged(auth, async user => {
+  loading(true);
+  if(user){
+    currentUID = user.uid;
+    const snap = await getDoc(doc(db,'usuarios',user.uid));
+    if(!snap.exists()){ await signOut(auth); loading(false); return; }
+    currentUser = { uid:user.uid, ...snap.data() };
+    await loadCaches();
+    document.getElementById('screenAuth').classList.remove('active');
+    document.getElementById('screenMain').classList.add('active');
+    const initials = currentUser.nome.split(' ').map(n=>n[0]).slice(0,2).join('');
+    document.getElementById('topAvatar').textContent  = initials;
+    document.getElementById('topUserName').textContent = currentUser.nome.split(' ')[0];
+    if(currentUser.tipo==='Membro'){
+      document.getElementById('memberArea').style.display='flex';
+      document.getElementById('gerenteArea').style.display='none';
+      initMemberPage();
+    } else {
+      document.getElementById('gerenteArea').style.display='flex';
+      document.getElementById('memberArea').style.display='none';
+      initGerentePage();
+    }
+  } else {
+    document.getElementById('screenAuth').classList.add('active');
+    document.getElementById('screenMain').classList.remove('active');
+  }
+  loading(false);
+});
+
+// ── CACHES ──
+async function loadCaches(){
+  const [usSnap, jSnap] = await Promise.all([
+    getDocs(collection(db,'usuarios')),
+    getDocs(collection(db,'jogos'))
+  ]);
+  allUsers = usSnap.docs.map(d=>({uid:d.id,...d.data()}));
+  allJogos = jSnap.docs.map(d=>({id:d.id,...d.data()}));
 }
 
-// ========== MEMBRO ==========
-function initMemberPage() {
-  document.getElementById('welcomeName').textContent = 'Olá, ' + currentUser.nome.split(' ')[0] + '! 👋';
-  document.getElementById('welcomeLevel').textContent = 'Nível: ' + currentUser.nivel;
-  const jogosNivel = JOGOS.filter(j => j.nivel === currentUser.nivel && j.status === 'Aberto');
-  const minhasDup = DUPLAS.filter(d => d.jogador1 === currentUser.id || d.jogador2 === currentUser.id);
-  const minhasInsc = INSCRICOES.filter(i => i.usuarioId === currentUser.id);
-  document.getElementById('wbJogos').textContent = jogosNivel.length;
-  document.getElementById('wbDuplas').textContent = minhasDup.length;
-  document.getElementById('wbInscricoes').textContent = minhasInsc.length;
-  renderJogosMember();
-  renderMinhasInscricoes();
-  renderMinhasDuplas();
+// ════════════════════════════════
+// MEMBRO
+// ════════════════════════════════
+async function initMemberPage(){
+  const jogosNivel = allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto');
+  const [inscSnap, dupSnap] = await Promise.all([
+    getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID))),
+    getDocs(query(collection(db,'duplas'),where('membros','array-contains',currentUID)))
+  ]);
+  const inscricoes = inscSnap.docs.map(d=>({id:d.id,...d.data()}));
+  const duplas     = dupSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+  // total do mês
+  const hoje = new Date(); const mesAno = `${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
+  let totalMes = 0;
+  inscricoes.forEach(i=>{ if(i.status==='Aprovado'){ const j=allJogos.find(x=>x.id===i.jogoId); if(j&&j.mesAno===mesAno) totalMes+=Number(j.valor||0); } });
+
+  document.getElementById('welcomeName').textContent  = 'Olá, '+currentUser.nome.split(' ')[0]+'! 👋';
+  document.getElementById('welcomeLevel').textContent = 'Nível: '+currentUser.nivel;
+  document.getElementById('wbJogos').textContent      = jogosNivel.length;
+  document.getElementById('wbDuplas').textContent     = duplas.length;
+  document.getElementById('wbTotal').textContent      = totalMes.toFixed(2).replace('.',',');
+  document.getElementById('badgeJogosCount').textContent = jogosNivel.length+' disponíveis';
+
+  renderJogosMember(inscricoes);
+  renderMinhasInscricoes(inscricoes);
+  renderMinhasDuplas(duplas);
   renderPerfil();
 }
 
-function renderJogosMember() {
-  const jogos = JOGOS.filter(j => j.nivel === currentUser.nivel && j.status === 'Aberto');
-  const container = document.getElementById('jogosListMember');
-  document.getElementById('badgeJogosCount').textContent = jogos.length + ' disponíveis';
-  if (!jogos.length) {
-    container.innerHTML = '<div class="empty"><i class="ti ti-calendar-off"></i><div class="empty-msg">Nenhum jogo disponível para o seu nível no momento.</div></div>';
-    return;
-  }
-  container.innerHTML = jogos.map(j => {
-    const jaInscrito = INSCRICOES.find(i => i.usuarioId === currentUser.id && i.jogoId === j.id);
-    const ocupados = INSCRICOES.filter(i => i.jogoId === j.id && i.status !== 'Rejeitado').length;
-    const livres = j.vagas - ocupados;
-    const statusBadge = jaInscrito
-      ? `<span class="badge badge-${jaInscrito.status==='Aprovado'?'green':jaInscrito.status==='Rejeitado'?'red':'amber'}">${jaInscrito.status}</span>`
-      : `<button class="btn-sm primary" onclick="abrirInscricao('${j.id}')"><i class="ti ti-plus"></i> Inscrever</button>`;
+function renderJogosMember(inscricoes){
+  const jogos = allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto');
+  const el = document.getElementById('jogosListMember');
+  if(!jogos.length){ el.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhum jogo disponível para o seu nível.</p></div>'; return; }
+  el.innerHTML = jogos.map(j=>{
+    const jaInsc = inscricoes.find(i=>i.jogoId===j.id);
+    const ocup   = inscricoes.filter(i=>i.jogoId===j.id&&i.status!=='Rejeitado').length;
+    const livres = (j.vagas||12)-ocup;
+    const btn    = jaInsc
+      ? `<span class="badge ${jaInsc.status==='Aprovado'?'bg':jaInsc.status==='Rejeitado'?'br':'ba'}">${jaInsc.status}</span>`
+      : `<button class="btn-sm pr" onclick="window.abrirInscricao('${j.id}')"><i class="ti ti-plus"></i> Inscrever</button>`;
     return `<div class="card">
       <div class="card-row">
-        <div>
-          <div class="card-title">${j.nome}</div>
-          <div class="card-sub">${j.dia} · ${j.tipo}</div>
-        </div>
-        ${statusBadge}
+        <div><div class="card-title">${j.nome}</div><div class="card-sub">${j.dia}${j.mesAno?' · '+j.mesAno:''} · ${j.tipo}</div></div>
+        ${btn}
       </div>
       <div class="card-meta">
-        <span class="badge badge-blue">${j.nivel}</span>
-        <span class="badge badge-${livres<=2?'red':livres<=5?'amber':'gray'}">${livres} vagas livres</span>
+        <span class="badge bb">${j.nivel}</span>
+        <span class="badge ${livres<=2?'br':livres<=5?'ba':'bgy'}">${livres} vagas</span>
+        ${j.professor==='sim'?'<span class="badge bor"><i class="ti ti-star" style="font-size:10px"></i> Com professor</span>':''}
+      </div>
+      <div class="valor-box">
+        <span class="valor-label">Valor deste jogo</span>
+        <span class="valor-num">R$ ${Number(j.valor||0).toFixed(2).replace('.',',')}</span>
       </div>
     </div>`;
   }).join('');
 }
 
-function abrirInscricao(jogoId) {
-  const jogo = JOGOS.find(j => j.id === jogoId);
-  modalJogoSelecionado = jogo;
-  let extra = '';
-  if (jogo.tipo === 'Dupla') {
-    const minhasDup = DUPLAS.filter(d => (d.jogador1 === currentUser.id || d.jogador2 === currentUser.id) && d.status === 'Ativa');
-    const opts = minhasDup.length
-      ? minhasDup.map(d => `<option value="${d.id}">${d.nome}</option>`).join('')
-      : '<option value="">Você não tem duplas ativas</option>';
-    extra = `<div class="form-group"><label class="form-label">Selecionar dupla</label><select class="form-control" id="modalDuplaSelect">${opts}</select></div>`;
-  }
-  document.getElementById('modalInscricaoContent').innerHTML = `
-    <div class="card" style="background:#f5f4f0;margin-bottom:14px">
+window.abrirInscricao = function(jogoId){
+  const jogo = allJogos.find(j=>j.id===jogoId);
+  modalJogoAtual = jogo;
+  document.getElementById('modalInscricaoContent').innerHTML=`
+    <div class="card" style="background:var(--sur2);margin-bottom:12px">
       <div class="card-title">${jogo.nome}</div>
-      <div class="card-sub">${jogo.dia} · ${jogo.tipo} · ${jogo.nivel}</div>
+      <div class="card-sub">${jogo.dia}${jogo.mesAno?' · '+jogo.mesAno:''} · ${jogo.tipo} · ${jogo.nivel}</div>
+      <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</span></div>
     </div>
-    ${extra}
-    <p style="font-size:13px;color:#666;line-height:1.5">Sua inscrição ficará como <strong>Pendente</strong> até ser aprovada pelo gerente.</p>`;
+    <p style="font-size:12px;color:var(--tx2);line-height:1.5">Sua inscrição ficará como <strong>Pendente</strong> até ser aprovada pelo gerente.</p>`;
   document.getElementById('modalInscricao').classList.add('open');
-}
+};
 
-function confirmarInscricao() {
-  const jaExiste = INSCRICOES.find(i => i.usuarioId === currentUser.id && i.jogoId === modalJogoSelecionado.id);
-  if (jaExiste) { closeModal('modalInscricao'); showToast('⚠️ Você já está inscrito neste jogo!'); return; }
-  INSCRICOES.push({ id:'i'+Date.now(), usuarioId:currentUser.id, jogoId:modalJogoSelecionado.id, status:'Pendente', data:new Date().toLocaleDateString('pt-BR') });
-  closeModal('modalInscricao');
+window.confirmarInscricao = async function(){
+  loading(true);
+  const snap = await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID),where('jogoId','==',modalJogoAtual.id)));
+  if(!snap.empty){ closeModal('modalInscricao'); loading(false); showToast('⚠️ Você já está inscrito neste jogo!'); return; }
+  await addDoc(collection(db,'inscricoes'),{
+    usuarioId:currentUID, usuarioNome:currentUser.nome,
+    jogoId:modalJogoAtual.id, jogoNome:modalJogoAtual.nome,
+    jogoMesAno:modalJogoAtual.mesAno||'', jogoValor:Number(modalJogoAtual.valor||0),
+    status:'Pendente', criadoEm:serverTimestamp()
+  });
+  closeModal('modalInscricao'); loading(false);
   showToast('✅ Inscrição enviada! Aguardando aprovação.');
-  initMemberPage();
-}
+  await initMemberPage();
+};
 
-function renderMinhasInscricoes() {
-  const lista = INSCRICOES.filter(i => i.usuarioId === currentUser.id);
-  const container = document.getElementById('minhasInscricoesList');
-  if (!lista.length) {
-    container.innerHTML = '<div class="empty"><i class="ti ti-calendar-x"></i><div class="empty-msg">Você ainda não se inscreveu em nenhum jogo.<br>Vá até Início e se inscreva!</div></div>';
-    return;
-  }
-  container.innerHTML = lista.map(i => {
-    const jogo = JOGOS.find(j => j.id === i.jogoId);
-    const bCls = i.status==='Aprovado'?'green':i.status==='Rejeitado'?'red':'amber';
+async function renderMinhasInscricoes(inscricoes){
+  const el = document.getElementById('minhasInscricoesList');
+  if(!inscricoes.length){ el.innerHTML='<div class="empty"><i class="ti ti-calendar-x"></i><p>Você não tem inscrições ainda.</p></div>'; return; }
+  let total=0;
+  inscricoes.forEach(i=>{ if(i.status==='Aprovado') total+=Number(i.jogoValor||0); });
+  document.getElementById('totalMesInscricoes').textContent='R$ '+total.toFixed(2).replace('.',',');
+  el.innerHTML=inscricoes.map(i=>{
+    const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
     return `<div class="card">
       <div class="card-row">
-        <div>
-          <div class="card-title">${jogo ? jogo.nome : 'Jogo removido'}</div>
-          <div class="card-sub">${jogo ? jogo.dia+' · '+jogo.tipo : ''} · ${i.data}</div>
-        </div>
-        <span class="badge badge-${bCls}">${i.status}</span>
+        <div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div></div>
+        <span class="badge ${bc}">${i.status}</span>
+      </div>
+      <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function renderMinhasDuplas(duplas){
+  const el=document.getElementById('minhasDuplasList');
+  if(!duplas.length){ el.innerHTML='<div class="empty"><i class="ti ti-users-group"></i><p>Nenhuma dupla cadastrada. Clique em "Nova" para criar!</p></div>'; return; }
+  el.innerHTML=duplas.map(d=>{
+    const nomes=d.membros.map(uid=>{ const u=allUsers.find(x=>x.uid===uid); return u?u.nome.split(' ')[0]:'?'; }).join(' + ');
+    return `<div class="card">
+      <div class="card-row">
+        <div><div class="card-title">${d.nome}</div><div class="card-sub">${nomes}</div></div>
+        <span class="badge ${d.status==='Ativa'?'bg':'bgy'}">${d.status}</span>
       </div>
     </div>`;
   }).join('');
 }
 
-function renderMinhasDuplas() {
-  const lista = DUPLAS.filter(d => d.jogador1 === currentUser.id || d.jogador2 === currentUser.id);
-  const container = document.getElementById('minhasDuplasList');
-  if (!lista.length) {
-    container.innerHTML = '<div class="empty"><i class="ti ti-users-group"></i><div class="empty-msg">Você não tem duplas cadastradas.<br>Clique em "Nova dupla" para criar!</div></div>';
-    return;
-  }
-  container.innerHTML = lista.map(d => {
-    const p1 = USUARIOS.find(u => u.id === d.jogador1);
-    const p2 = USUARIOS.find(u => u.id === d.jogador2);
-    return `<div class="card">
-      <div class="card-row">
-        <div>
-          <div class="card-title">${d.nome}</div>
-          <div class="card-sub">${p1?.nome||'?'} + ${p2?.nome||'?'}</div>
-        </div>
-        <span class="badge badge-${d.status==='Ativa'?'green':'gray'}">${d.status}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openModalDupla() {
-  const outros = USUARIOS.filter(u => u.id !== currentUser.id && u.tipo === 'Membro');
-  document.getElementById('duplaJogador2').innerHTML = '<option value="">— Selecione um parceiro —</option>' +
-    outros.map(u => `<option value="${u.id}">${u.nome} (${u.nivel})</option>`).join('');
-  document.getElementById('duplaNome').value = '';
+window.openModalDupla = function(){
+  const outros=allUsers.filter(u=>u.uid!==currentUID&&u.tipo==='Membro');
+  document.getElementById('duplaJogador2').innerHTML='<option value="">— Selecione —</option>'+outros.map(u=>`<option value="${u.uid}">${u.nome} (${u.nivel})</option>`).join('');
+  document.getElementById('duplaNome').value='';
   document.getElementById('modalDupla').classList.add('open');
-}
+};
 
-function confirmarDupla() {
-  const nome = document.getElementById('duplaNome').value.trim();
-  const j2 = document.getElementById('duplaJogador2').value;
-  if (!nome) { showToast('⚠️ Digite o nome da dupla'); return; }
-  if (!j2) { showToast('⚠️ Selecione um parceiro'); return; }
-  DUPLAS.push({ id:'d'+Date.now(), nome, jogador1:currentUser.id, jogador2:j2, status:'Ativa', criadoPor:currentUser.id });
-  closeModal('modalDupla');
-  showToast('✅ Dupla criada com sucesso!');
-  initMemberPage();
-}
+window.confirmarDupla = async function(){
+  const nome=document.getElementById('duplaNome').value.trim();
+  const j2=document.getElementById('duplaJogador2').value;
+  if(!nome||!j2){ showToast('⚠️ Preencha todos os campos'); return; }
+  loading(true);
+  await addDoc(collection(db,'duplas'),{ nome, membros:[currentUID,j2], status:'Ativa', criadoPor:currentUID, criadoEm:serverTimestamp() });
+  closeModal('modalDupla'); loading(false);
+  showToast('✅ Dupla criada!');
+  await initMemberPage();
+};
 
-function renderPerfil() {
-  const u = currentUser;
-  const insc = INSCRICOES.filter(i => i.usuarioId === u.id);
-  const aprov = insc.filter(i => i.status === 'Aprovado').length;
-  const duplas = DUPLAS.filter(d => d.jogador1 === u.id || d.jogador2 === u.id).length;
-  document.getElementById('perfilCard').innerHTML = `
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-      <div class="avatar" style="width:52px;height:52px;font-size:18px;flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-      <div>
-        <div class="card-title" style="font-size:16px">${u.nome}</div>
-        <div class="card-sub">${u.email}</div>
-        <span class="badge badge-green" style="margin-top:4px">${u.status}</span>
-      </div>
+function renderPerfil(){
+  document.getElementById('perfilCard').innerHTML=`
+    <div style="display:flex;align-items:center;gap:13px;margin-bottom:14px">
+      <div class="avatar" style="width:50px;height:50px;font-size:17px;flex-shrink:0">${currentUser.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+      <div><div class="card-title" style="font-size:16px">${currentUser.nome}</div><div class="card-sub">${currentUser.email}</div></div>
     </div>
     <hr>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
-      <div style="background:#f5f4f0;border-radius:10px;padding:12px;text-align:center">
-        <div style="font-size:20px;font-weight:700">${u.nivel||'—'}</div>
-        <div style="font-size:11px;color:#666;margin-top:2px">Nível</div>
-      </div>
-      <div style="background:#f5f4f0;border-radius:10px;padding:12px;text-align:center">
-        <div style="font-size:20px;font-weight:700">${aprov}</div>
-        <div style="font-size:11px;color:#666;margin-top:2px">Confirmados</div>
-      </div>
-      <div style="background:#f5f4f0;border-radius:10px;padding:12px;text-align:center">
-        <div style="font-size:20px;font-weight:700">${duplas}</div>
-        <div style="font-size:11px;color:#666;margin-top:2px">Duplas</div>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <div style="background:var(--sur2);border-radius:9px;padding:11px;text-align:center"><div style="font-size:16px;font-weight:700">${currentUser.nivel}</div><div style="font-size:11px;color:var(--tx2)">Nível</div></div>
+      <div style="background:var(--sur2);border-radius:9px;padding:11px;text-align:center"><div style="font-size:16px;font-weight:700">${currentUser.telefone}</div><div style="font-size:11px;color:var(--tx2)">Telefone</div></div>
     </div>`;
-  const solPend = SOLICITACOES_NIVEL.find(s => s.usuarioId === u.id && s.status === 'Pendente');
-  document.getElementById('selectNovoNivel').value = u.nivel;
-  if (solPend) {
-    document.getElementById('selectNovoNivel').disabled = true;
-    document.querySelector('#pageMemberPerfil .btn-sm.primary').textContent = '⏳ Solicitação enviada...';
-    document.querySelector('#pageMemberPerfil .btn-sm.primary').disabled = true;
-  } else {
-    document.getElementById('selectNovoNivel').disabled = false;
-  }
+  document.getElementById('selectNovoNivel').value=currentUser.nivel;
 }
 
-function solicitarNivel() {
-  const novo = document.getElementById('selectNovoNivel').value;
-  if (novo === currentUser.nivel) { showToast('⚠️ Esse já é o seu nível atual!'); return; }
-  const jaExiste = SOLICITACOES_NIVEL.find(s => s.usuarioId === currentUser.id && s.status === 'Pendente');
-  if (jaExiste) { showToast('⚠️ Você já tem uma solicitação pendente!'); return; }
-  SOLICITACOES_NIVEL.push({ id:'n'+Date.now(), usuarioId:currentUser.id, nivelAtual:currentUser.nivel, nivelSolicitado:novo, status:'Pendente', data:new Date().toLocaleDateString('pt-BR') });
+window.solicitarNivel = async function(){
+  const novo=document.getElementById('selectNovoNivel').value;
+  if(novo===currentUser.nivel){ showToast('⚠️ Esse já é seu nível!'); return; }
+  const snap=await getDocs(query(collection(db,'solicitacoesNivel'),where('usuarioId','==',currentUID),where('status','==','Pendente')));
+  if(!snap.empty){ showToast('⚠️ Você já tem uma solicitação pendente!'); return; }
+  await addDoc(collection(db,'solicitacoesNivel'),{ usuarioId:currentUID, usuarioNome:currentUser.nome, nivelAtual:currentUser.nivel, nivelSolicitado:novo, status:'Pendente', criadoEm:serverTimestamp() });
   showToast('✅ Solicitação enviada ao gerente!');
-  renderPerfil();
-}
+};
 
-function memberPage(pageId, btn) {
-  document.querySelectorAll('#memberArea .page').forEach(p => p.classList.remove('active'));
+window.memberPage = function(pageId, btn){
+  document.querySelectorAll('#memberArea .page').forEach(p=>p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
-  document.querySelectorAll('#memberNav .bnav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#memberNav .bnav-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-}
+};
 
-// ========== GERENTE ==========
-function initGerentePage() {
-  document.getElementById('welcomeNameGerente').textContent = 'Olá, ' + currentUser.nome.split(' ')[0] + '! 👋';
-  renderGerenteHome();
-  renderInscricoesPend();
-  renderNivelSolic();
+// ════════════════════════════════
+// GERENTE / COORDENADOR
+// ════════════════════════════════
+async function initGerentePage(){
+  document.getElementById('welcomeNameG').textContent='Olá, '+currentUser.nome.split(' ')[0]+'! 👋';
+  document.getElementById('welcomeRoleG').textContent='Área Administrativa · '+currentUser.tipo;
+  await renderGerenteHome();
+  await renderInscricoesPend();
+  await renderNivelSolic();
   renderJogosGerente();
   renderUsuariosGerente();
+  // pré-seleciona mês atual no relatório
+  const hoje=new Date();
+  document.getElementById('relMes').value=String(hoje.getMonth()+1).padStart(2,'0');
+  document.getElementById('relAno').value=hoje.getFullYear();
 }
 
-function renderGerenteHome() {
-  const membros = USUARIOS.filter(u => u.tipo === 'Membro');
-  const pend = INSCRICOES.filter(i => i.status === 'Pendente');
-  const niv = SOLICITACOES_NIVEL.filter(s => s.status === 'Pendente');
-  document.getElementById('statMembros').textContent = membros.length;
-  document.getElementById('statPend').textContent = pend.length + niv.length;
-  document.getElementById('statJogos').textContent = JOGOS.length;
-  document.getElementById('hintInscricoes').textContent = pend.length + ' aguardando aprovação';
-  document.getElementById('hintNivel').textContent = niv.length + ' solicitação(ões) pendente(s)';
-  document.getElementById('hintMembros').textContent = membros.length + ' membros ativos';
+async function renderGerenteHome(){
+  const membros=allUsers.filter(u=>u.tipo==='Membro');
+  const [iSnap,nSnap]=await Promise.all([
+    getDocs(query(collection(db,'inscricoes'),where('status','==','Pendente'))),
+    getDocs(query(collection(db,'solicitacoesNivel'),where('status','==','Pendente')))
+  ]);
+  document.getElementById('statMembros').textContent=membros.length;
+  document.getElementById('statPend').textContent=iSnap.size+nSnap.size;
+  document.getElementById('statJogos').textContent=allJogos.length;
+  document.getElementById('hintInsc').textContent=iSnap.size+' aguardando aprovação';
+  document.getElementById('hintNivel').textContent=nSnap.size+' solicitação(ões) pendente(s)';
+  document.getElementById('hintMembros').textContent=membros.length+' membros ativos';
 }
 
-function renderInscricoesPend() {
-  const lista = INSCRICOES.filter(i => i.status === 'Pendente');
-  const container = document.getElementById('inscricoesPendList');
-  if (!lista.length) {
-    container.innerHTML = '<div class="empty"><i class="ti ti-circle-check"></i><div class="empty-msg">Nenhuma inscrição pendente.<br>Tudo em dia! ✅</div></div>';
-    return;
-  }
-  container.innerHTML = lista.map(i => {
-    const jogo = JOGOS.find(j => j.id === i.jogoId);
-    const usr = USUARIOS.find(u => u.id === i.usuarioId);
+async function renderInscricoesPend(){
+  const snap=await getDocs(query(collection(db,'inscricoes'),where('status','==','Pendente')));
+  const el=document.getElementById('inscricoesPendList');
+  if(snap.empty){ el.innerHTML='<div class="empty"><i class="ti ti-circle-check"></i><p>Nenhuma inscrição pendente ✅</p></div>'; return; }
+  el.innerHTML=snap.docs.map(d=>{
+    const i={id:d.id,...d.data()};
+    const j=allJogos.find(x=>x.id===i.jogoId);
     return `<div class="card">
-      <div class="card-title">${usr?.nome||'Usuário desconhecido'}</div>
-      <div class="card-sub">${jogo?.nome||'Jogo desconhecido'} · ${jogo?.dia||''} · ${jogo?.tipo||''}</div>
+      <div class="card-title">${i.usuarioNome}</div>
+      <div class="card-sub">${i.jogoNome} · ${j?.dia||''} · ${j?.tipo||''} · ${i.jogoMesAno||''}</div>
       <div class="card-meta">
-        <span class="badge badge-amber">Pendente</span>
-        <span class="badge badge-blue">${jogo?.nivel||''}</span>
-        <span class="badge badge-gray">${i.data}</span>
+        <span class="badge ba">Pendente</span>
+        <span class="badge bb">${j?.nivel||''}</span>
+        <span class="badge bor">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span>
       </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn-sm success" onclick="aprovarInscricao('${i.id}')"><i class="ti ti-check"></i> Aprovar</button>
-        <button class="btn-sm danger" onclick="rejeitarInscricao('${i.id}')"><i class="ti ti-x"></i> Rejeitar</button>
+      <div style="display:flex;gap:8px;margin-top:11px">
+        <button class="btn-sm ok" onclick="window.aprovarInsc('${i.id}')"><i class="ti ti-check"></i> Aprovar</button>
+        <button class="btn-sm no" onclick="window.rejeitarInsc('${i.id}')"><i class="ti ti-x"></i> Rejeitar</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function aprovarInscricao(id) {
-  const insc = INSCRICOES.find(i => i.id === id);
-  if (insc) insc.status = 'Aprovado';
-  showToast('✅ Inscrição aprovada com sucesso!');
-  renderInscricoesPend();
-  renderGerenteHome();
-}
-
-function rejeitarInscricao(id) {
-  const insc = INSCRICOES.find(i => i.id === id);
-  if (insc) insc.status = 'Rejeitado';
+window.aprovarInsc = async function(id){
+  loading(true);
+  await updateDoc(doc(db,'inscricoes',id),{status:'Aprovado'});
+  showToast('✅ Inscrição aprovada!');
+  await renderInscricoesPend(); await renderGerenteHome(); loading(false);
+};
+window.rejeitarInsc = async function(id){
+  loading(true);
+  await updateDoc(doc(db,'inscricoes',id),{status:'Rejeitado'});
   showToast('❌ Inscrição rejeitada.');
-  renderInscricoesPend();
-  renderGerenteHome();
-}
+  await renderInscricoesPend(); await renderGerenteHome(); loading(false);
+};
 
-function renderNivelSolic() {
-  const lista = SOLICITACOES_NIVEL.filter(s => s.status === 'Pendente');
-  const container = document.getElementById('nivelSolicList');
-  if (!lista.length) {
-    container.innerHTML = '<div class="empty"><i class="ti ti-circle-check"></i><div class="empty-msg">Nenhuma solicitação de nível pendente.</div></div>';
-    return;
-  }
-  container.innerHTML = lista.map(s => {
-    const usr = USUARIOS.find(u => u.id === s.usuarioId);
+async function renderNivelSolic(){
+  const snap=await getDocs(query(collection(db,'solicitacoesNivel'),where('status','==','Pendente')));
+  const el=document.getElementById('nivelSolicList');
+  if(snap.empty){ el.innerHTML='<div class="empty"><i class="ti ti-circle-check"></i><p>Nenhuma solicitação pendente.</p></div>'; return; }
+  el.innerHTML=snap.docs.map(d=>{
+    const s={id:d.id,...d.data()};
     return `<div class="card">
-      <div class="card-title">${usr?.nome||'?'}</div>
-      <div class="card-sub">${s.nivelAtual} → ${s.nivelSolicitado} · Solicitado em ${s.data}</div>
-      <div class="card-meta">
-        <span class="badge badge-amber">Pendente</span>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn-sm success" onclick="aprovarNivel('${s.id}')"><i class="ti ti-check"></i> Aprovar</button>
-        <button class="btn-sm danger" onclick="rejeitarNivel('${s.id}')"><i class="ti ti-x"></i> Rejeitar</button>
+      <div class="card-title">${s.usuarioNome}</div>
+      <div class="card-sub">${s.nivelAtual} → ${s.nivelSolicitado}</div>
+      <div style="display:flex;gap:8px;margin-top:11px">
+        <button class="btn-sm ok" onclick="window.aprovarNivel('${s.id}','${s.usuarioId}','${s.nivelSolicitado}')"><i class="ti ti-check"></i> Aprovar</button>
+        <button class="btn-sm no" onclick="window.rejeitarNivel('${s.id}')"><i class="ti ti-x"></i> Rejeitar</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function aprovarNivel(id) {
-  const sol = SOLICITACOES_NIVEL.find(s => s.id === id);
-  if (sol) {
-    sol.status = 'Aprovado';
-    const usr = USUARIOS.find(u => u.id === sol.usuarioId);
-    if (usr) usr.nivel = sol.nivelSolicitado;
-  }
-  showToast('✅ Nível atualizado com sucesso!');
-  renderNivelSolic();
-  renderGerenteHome();
-}
+window.aprovarNivel = async function(id, uid, novoNivel){
+  loading(true);
+  await Promise.all([
+    updateDoc(doc(db,'solicitacoesNivel',id),{status:'Aprovado'}),
+    updateDoc(doc(db,'usuarios',uid),{nivel:novoNivel})
+  ]);
+  const u=allUsers.find(x=>x.uid===uid); if(u) u.nivel=novoNivel;
+  showToast('✅ Nível atualizado!');
+  await renderNivelSolic(); await renderGerenteHome(); loading(false);
+};
+window.rejeitarNivel = async function(id){
+  loading(true);
+  await updateDoc(doc(db,'solicitacoesNivel',id),{status:'Rejeitado'});
+  showToast('❌ Solicitação rejeitada.');
+  await renderNivelSolic(); await renderGerenteHome(); loading(false);
+};
 
-function rejeitarNivel(id) {
-  const sol = SOLICITACOES_NIVEL.find(s => s.id === id);
-  if (sol) sol.status = 'Rejeitado';
-  showToast('❌ Solicitação de nível rejeitada.');
-  renderNivelSolic();
-  renderGerenteHome();
-}
-
-function renderJogosGerente() {
-  const container = document.getElementById('jogosGerenteList');
-  container.innerHTML = JOGOS.map(j => {
-    const ocup = INSCRICOES.filter(i => i.jogoId === j.id && i.status !== 'Rejeitado').length;
+function renderJogosGerente(){
+  const el=document.getElementById('jogosGerenteList');
+  if(!allJogos.length){ el.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhum jogo cadastrado ainda.</p></div>'; return; }
+  el.innerHTML=allJogos.map(j=>{
     return `<div class="card">
       <div class="card-row">
-        <div>
-          <div class="card-title">${j.nome}</div>
-          <div class="card-sub">${j.dia} · ${j.tipo}</div>
-        </div>
-        <span class="badge badge-${j.status==='Aberto'?'green':'gray'}">${j.status}</span>
+        <div><div class="card-title">${j.nome}</div><div class="card-sub">${j.dia}${j.mesAno?' · '+j.mesAno:''} · ${j.tipo}</div></div>
+        <span class="badge ${j.status==='Aberto'?'bg':'bgy'}">${j.status}</span>
       </div>
       <div class="card-meta">
-        <span class="badge badge-blue">${j.nivel}</span>
-        <span class="badge badge-gray">${ocup}/${j.vagas} vagas</span>
+        <span class="badge bb">${j.nivel}</span>
+        <span class="badge bor">R$ ${Number(j.valor||0).toFixed(2).replace('.',',')}</span>
+        ${j.professor==='sim'?'<span class="badge bor"><i class="ti ti-star" style="font-size:10px"></i> Prof.</span>':''}
       </div>
-      <div style="margin-top:12px">
-        <button class="btn-sm" onclick="toggleJogo('${j.id}')">
-          <i class="ti ti-${j.status==='Aberto'?'lock':'lock-open'}"></i>
-          ${j.status==='Aberto'?'Fechar':'Abrir'} jogo
-        </button>
+      <div style="display:flex;gap:8px;margin-top:11px">
+        <button class="btn-sm" onclick="window.editarJogo('${j.id}')"><i class="ti ti-edit"></i> Editar</button>
+        <button class="btn-sm" onclick="window.toggleJogo('${j.id}')">${j.status==='Aberto'?'<i class="ti ti-lock"></i> Fechar':'<i class="ti ti-lock-open"></i> Abrir'}</button>
+        <button class="btn-sm no" onclick="window.excluirJogo('${j.id}')"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
   }).join('');
 }
 
-function toggleJogo(id) {
-  const j = JOGOS.find(g => g.id === id);
-  if (j) j.status = j.status === 'Aberto' ? 'Fechado' : 'Aberto';
-  showToast('✅ Status do jogo atualizado!');
-  renderJogosGerente();
-  renderGerenteHome();
-}
-
-function openModalNovoJogo() {
-  document.getElementById('jogoNome').value = '';
+window.openModalNovoJogo = function(){
+  document.getElementById('jogoEditId').value='';
+  document.getElementById('jogoNome').value='';
+  document.getElementById('jogoMesAno').value='';
+  document.getElementById('jogoValor').value='0';
+  document.getElementById('jogoVagas').value='12';
+  document.getElementById('jogoProfessor').value='nao';
   document.getElementById('modalNovoJogo').classList.add('open');
-}
+};
 
-function confirmarNovoJogo() {
-  const nome = document.getElementById('jogoNome').value.trim();
-  if (!nome) { showToast('⚠️ Digite o nome do jogo'); return; }
-  JOGOS.push({
-    id: 'j'+Date.now(),
+window.editarJogo = function(id){
+  const j=allJogos.find(x=>x.id===id);
+  document.getElementById('jogoEditId').value=id;
+  document.getElementById('jogoNome').value=j.nome;
+  document.getElementById('jogoDia').value=j.dia;
+  document.getElementById('jogoMesAno').value=j.mesAno||'';
+  document.getElementById('jogoTipo').value=j.tipo;
+  document.getElementById('jogoNivel').value=j.nivel;
+  document.getElementById('jogoVagas').value=j.vagas||12;
+  document.getElementById('jogoValor').value=j.valor||0;
+  document.getElementById('jogoProfessor').value=j.professor||'nao';
+  document.getElementById('modalNovoJogo').classList.add('open');
+};
+
+window.confirmarNovoJogo = async function(){
+  const nome=document.getElementById('jogoNome').value.trim();
+  if(!nome){ showToast('⚠️ Digite o nome do jogo'); return; }
+  const dados={
     nome,
-    dia:   document.getElementById('jogoDia').value,
-    tipo:  document.getElementById('jogoTipo').value,
-    nivel: document.getElementById('jogoNivel').value,
-    status:'Aberto',
-    vagas: parseInt(document.getElementById('jogoVagas').value) || 12
-  });
+    dia:document.getElementById('jogoDia').value,
+    mesAno:document.getElementById('jogoMesAno').value.trim(),
+    tipo:document.getElementById('jogoTipo').value,
+    nivel:document.getElementById('jogoNivel').value,
+    vagas:parseInt(document.getElementById('jogoVagas').value)||12,
+    valor:parseFloat(document.getElementById('jogoValor').value)||0,
+    professor:document.getElementById('jogoProfessor').value,
+    status:'Aberto'
+  };
+  loading(true);
+  const editId=document.getElementById('jogoEditId').value;
+  if(editId){
+    await updateDoc(doc(db,'jogos',editId),dados);
+    const idx=allJogos.findIndex(j=>j.id===editId);
+    if(idx>=0) allJogos[idx]={id:editId,...dados};
+    showToast('✅ Jogo atualizado!');
+  } else {
+    const ref=await addDoc(collection(db,'jogos'),{...dados,criadoEm:serverTimestamp()});
+    allJogos.push({id:ref.id,...dados});
+    showToast('✅ Jogo criado!');
+  }
   closeModal('modalNovoJogo');
-  showToast('✅ Novo jogo criado com sucesso!');
   renderJogosGerente();
-  renderGerenteHome();
-}
+  await renderGerenteHome();
+  loading(false);
+};
 
-function renderUsuariosGerente() {
-  const membros = USUARIOS.filter(u => u.tipo === 'Membro');
-  const container = document.getElementById('usuariosGerenteList');
-  container.innerHTML = membros.map(u => {
-    const insc = INSCRICOES.filter(i => i.usuarioId === u.id).length;
-    const duplas = DUPLAS.filter(d => d.jogador1 === u.id || d.jogador2 === u.id).length;
-    return `<div class="card">
-      <div class="card-row">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-          <div>
-            <div class="card-title">${u.nome}</div>
-            <div class="card-sub">${u.email}</div>
-          </div>
-        </div>
-        <span class="badge badge-${u.status==='Ativo'?'green':'gray'}">${u.status}</span>
-      </div>
-      <div class="card-meta">
-        <span class="badge badge-blue">${u.nivel}</span>
-        <span class="badge badge-gray">${insc} inscrições</span>
-        <span class="badge badge-gray">${duplas} duplas</span>
-      </div>
-    </div>`;
-  }).join('');
-}
+window.toggleJogo = async function(id){
+  const j=allJogos.find(x=>x.id===id);
+  const novoStatus=j.status==='Aberto'?'Fechado':'Aberto';
+  loading(true);
+  await updateDoc(doc(db,'jogos',id),{status:novoStatus});
+  j.status=novoStatus;
+  showToast('✅ Status atualizado!');
+  renderJogosGerente();
+  await renderGerenteHome();
+  loading(false);
+};
 
-function gerentePage(pageId, btn) {
-  document.querySelectorAll('#gerenteArea .page').forEach(p => p.classList.remove('active'));
-  document.getElementById(pageId).classList.add('active');
-  document.querySelectorAll('#gerenteNav .bnav-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-}
+window.excluirJogo = async function(id){
+  if(!confirm('Excluir este jogo? As inscrições vinculadas não serão removidas.')) return;
+  loading(true);
+  await deleteDoc(doc(db,'jogos',id));
+  allJogos=allJogos.filter(j=>j.id!==id);
+  showToast('🗑️ Jogo excluído.');
+  renderJogosGerente();
+  await renderGerenteHome();
+  loading(false);
+};
 
-// ========== UTILS ==========
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+// ── RELATÓRIO ──
+window.gerarRelatorio = async function(){
+  const mes=document.getElementById('relMes').value;
+  const ano=document.getElementById('relAno').value;
+  const mesAno=`${mes}/${ano}`;
+  loading(true);
+  const snap=await getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado')));
+  const inscs=snap.docs.map(d=>({id:d.id,...d.data()}));
+  const el=document.getElementById('relatorioContent');
+  if(!inscs.length){ el.innerHTML='<div class="empty"><i class="ti ti-report"></i><p>Nenhuma inscrição aprovada em '+mesAno+'</p></div>'; loading(false); return; }
 
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-// Fecha modal ao clicar fora
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', function(e) {
-    if (e.target === this) this.classList.remove('open');
+  // agrupa por jogo
+  const porJogo={};
+  inscs.forEach(i=>{ if(!porJogo[i.jogoNome]) porJogo[i.jogoNome]={valor:i.jogoValor||0,membros:[]}; porJogo[i.jogoNome].membros.push(i.usuarioNome); });
+  let totalGeral=0;
+  let rows='';
+  Object.entries(porJogo).forEach(([jNome,dados])=>{
+    const sub=dados.membros.length*dados.valor;
+    totalGeral+=sub;
+    rows+=`<tr><td style="font-weight:600">${jNome}</td><td>${dados.membros.length}</td><td>R$ ${Number(dados.valor).toFixed(2).replace('.',',')}</td><td>R$ ${sub.toFixed(2).replace('.',',')}</td></tr>
+    <tr><td colspan="4" style="font-size:11px;color:var(--tx2);padding:4px 10px 10px">${dados.membros.join(', ')}</td></tr>`;
   });
+
+  el.innerHTML=`
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Período: <strong>${mesAno}</strong> · ${inscs.length} inscrições aprovadas</div>
+    <div style="overflow-x:auto">
+    <table class="rel-table">
+      <thead><tr><th>Jogo</th><th>Inscritos</th><th>Valor/pessoa</th><th>Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="rel-total"><span>Total arrecadado em ${mesAno}</span><span>R$ ${totalGeral.toFixed(2).replace('.',',')}</span></div>
+    <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarCSV('${mesAno}')">
+      <i class="ti ti-download"></i> Exportar CSV
+    </button>`;
+  loading(false);
+};
+
+window.exportarCSV = async function(mesAno){
+  const snap=await getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado')));
+  const rows=[['Nome','Jogo','Mês/Ano','Valor (R$)','Status']];
+  snap.docs.forEach(d=>{ const i=d.data(); rows.push([i.usuarioNome,i.jogoNome,i.jogoMesAno,i.jogoValor||0,'Aprovado']); });
+  const csv=rows.map(r=>r.join(';')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`calango_relatorio_${mesAno.replace('/','_')}.csv`; a.click();
+  showToast('✅ CSV exportado!');
+};
+
+function renderUsuariosGerente(){
+  const membros=allUsers.filter(u=>u.tipo==='Membro');
+  const el=document.getElementById('usuariosGerenteList');
+  if(!membros.length){ el.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro cadastrado ainda.</p></div>'; return; }
+  el.innerHTML=membros.map(u=>`<div class="card" style="cursor:pointer" onclick="window.verMembro('${u.uid}')">
+    <div class="card-row">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+        <div><div class="card-title">${u.nome}</div><div class="card-sub">${u.email}</div></div>
+      </div>
+      <span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span>
+    </div>
+    <div class="card-meta">
+      <span class="badge bb">${u.nivel}</span>
+      <span class="badge bgy">${u.telefone}</span>
+    </div>
+  </div>`).join('');
+}
+
+window.verMembro = function(uid){
+  const u=allUsers.find(x=>x.uid===uid);
+  if(!u) return;
+  document.getElementById('modalMembroContent').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="avatar" style="width:48px;height:48px;font-size:16px;flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+      <div><div style="font-size:16px;font-weight:700">${u.nome}</div><div style="font-size:13px;color:var(--tx2)">${u.email}</div></div>
+    </div>
+    <hr>
+    <table style="width:100%;font-size:13px;margin-top:10px">
+      <tr><td style="color:var(--tx2);padding:5px 0">CPF</td><td style="text-align:right;font-weight:500">${u.cpf||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Nascimento</td><td style="text-align:right;font-weight:500">${u.dataNascimento||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Telefone</td><td style="text-align:right;font-weight:500">${u.telefone||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Nível</td><td style="text-align:right"><span class="badge bb">${u.nivel}</span></td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Status</td><td style="text-align:right"><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Emergência</td><td style="text-align:right;font-weight:500">${u.emergenciaNome||'—'} · ${u.emergenciaTel||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Doença</td><td style="text-align:right;font-weight:500">${u.doenca||'Nenhuma'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:5px 0">Como conheceu</td><td style="text-align:right;font-weight:500">${u.comoConheceu||'—'}</td></tr>
+    </table>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.inativarMembro('${uid}')">
+        <i class="ti ti-user-off"></i> ${u.status==='Ativo'?'Inativar':'Reativar'}
+      </button>
+    </div>`;
+  document.getElementById('modalMembro').classList.add('open');
+};
+
+window.inativarMembro = async function(uid){
+  const u=allUsers.find(x=>x.uid===uid);
+  const novoStatus=u.status==='Ativo'?'Inativo':'Ativo';
+  loading(true);
+  await updateDoc(doc(db,'usuarios',uid),{status:novoStatus});
+  u.status=novoStatus;
+  closeModal('modalMembro');
+  renderUsuariosGerente();
+  loading(false);
+  showToast('✅ Status do membro atualizado!');
+};
+
+window.gerentePage = function(pageId, btn){
+  document.querySelectorAll('#gerenteArea .page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('#gerenteNav .bnav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+};
+
+// fecha modais ao clicar fora
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
 });
+
+window.closeModal = closeModal;
 </script>
 </body>
 </html>
