@@ -493,7 +493,12 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <div class="page" id="pageGerenteJogos">
         <div class="sec-header">
           <div class="sec-title">Configurar jogos</div>
-          <button class="btn-sm pr" onclick="openModalNovoJogo()"><i class="ti ti-plus"></i> Novo</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="openModalReplicar()" style="background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB">
+              <i class="ti ti-copy"></i> Replicar mês
+            </button>
+            <button class="btn-sm pr" onclick="openModalNovoJogo()"><i class="ti ti-plus"></i> Novo</button>
+          </div>
         </div>
         <div id="jogosGerenteList"></div>
       </div>
@@ -634,6 +639,32 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
     <div id="modalMembroContent"></div>
     <div class="modal-actions">
       <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalMembro')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalReplicar">
+  <div class="modal">
+    <div class="modal-title">📋 Replicar jogos para outro mês</div>
+    <div style="background:#E6F7EF;color:#0F6E56;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:14px;line-height:1.5">
+      Copia todos os jogos de um mês para outro, mantendo nome, dias, tipo, nível, vagas e valores. Os jogos replicados ficam com status <strong>Aberto</strong>.
+    </div>
+    <div class="form-group">
+      <label class="form-label">Copiar jogos DE (mês/ano origem)</label>
+      <select class="form-control" id="replicarOrigem">
+        <option value="">Selecione o mês de origem...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Copiar jogos PARA (novo mês/ano)</label>
+      <input class="form-control" id="replicarDestino" placeholder="Ex: 07/2026">
+    </div>
+    <div id="replicarPreview" style="margin-top:6px"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalReplicar')">Cancelar</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarReplicar()">
+        <i class="ti ti-copy"></i> Replicar
+      </button>
     </div>
   </div>
 </div>
@@ -1202,6 +1233,84 @@ function renderJogosGerente(){
     </div>`;
   }).join('');
 }
+
+window.openModalReplicar = function(){
+  // monta lista de meses distintos que existem nos jogos
+  const meses = [...new Set(allJogos.map(j=>j.mesAno).filter(Boolean))].sort();
+  const sel = document.getElementById('replicarOrigem');
+  sel.innerHTML = '<option value="">Selecione o mês de origem...</option>' +
+    meses.map(m=>`<option value="${m}">${m} (${allJogos.filter(j=>j.mesAno===m).length} jogos)</option>`).join('');
+
+  // sugere próximo mês como destino
+  const hoje = new Date();
+  const proximo = `${String(hoje.getMonth()+2>12?1:hoje.getMonth()+2).padStart(2,'0')}/${hoje.getMonth()+2>12?hoje.getFullYear()+1:hoje.getFullYear()}`;
+  document.getElementById('replicarDestino').value = proximo;
+  document.getElementById('replicarPreview').innerHTML = '';
+  document.getElementById('modalReplicar').classList.add('open');
+};
+
+// atualiza preview quando muda origem
+document.addEventListener('change', function(e){
+  if(e.target.id !== 'replicarOrigem') return;
+  const origem = e.target.value;
+  const prev   = document.getElementById('replicarPreview');
+  if(!origem){ prev.innerHTML=''; return; }
+  const jogos  = allJogos.filter(j=>j.mesAno===origem);
+  prev.innerHTML = `
+    <div style="background:var(--sur2);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--tx2);margin-top:4px">
+      <div style="font-weight:600;color:var(--tx);margin-bottom:6px">${jogos.length} jogo(s) serão replicados:</div>
+      ${jogos.map(j=>`
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:10px">🏐</span>
+          <span style="color:var(--tx)">${j.nome}</span>
+          <span class="badge bb" style="font-size:10px;padding:1px 7px">${j.tipo}</span>
+          <span class="badge bor" style="font-size:10px;padding:1px 7px">R$ ${Number(j.valor||0).toFixed(2).replace('.',',')}</span>
+        </div>`).join('')}
+    </div>`;
+});
+
+window.confirmarReplicar = async function(){
+  const origem  = document.getElementById('replicarOrigem').value;
+  const destino = document.getElementById('replicarDestino').value.trim();
+  if(!origem){ showToast('⚠️ Selecione o mês de origem'); return; }
+  if(!destino || !/^\d{2}\/\d{4}$/.test(destino)){ showToast('⚠️ Digite o destino no formato MM/AAAA'); return; }
+
+  const jogosOrigem = allJogos.filter(j=>j.mesAno===origem);
+  if(!jogosOrigem.length){ showToast('⚠️ Nenhum jogo encontrado no mês de origem'); return; }
+
+  // verifica se já existem jogos no destino com o mesmo nome
+  const jogosDestino = allJogos.filter(j=>j.mesAno===destino);
+  const duplicados   = jogosOrigem.filter(j=>jogosDestino.some(d=>d.nome===j.nome));
+  if(duplicados.length){
+    const nomes = duplicados.map(j=>j.nome).join(', ');
+    if(!confirm(`Os seguintes jogos já existem em ${destino}:\n\n${nomes}\n\nDeseja replicar mesmo assim?`)) return;
+  }
+
+  loading(true);
+  let count = 0;
+  for(const j of jogosOrigem){
+    const novoJogo = {
+      nome:      j.nome,
+      dia:       j.dia,
+      mesAno:    destino,
+      tipo:      j.tipo,
+      nivel:     j.nivel,
+      vagas:     j.vagas || 12,
+      valor:     j.valor || 0,
+      professor: j.professor || 'nao',
+      status:    'Aberto',
+      criadoEm:  serverTimestamp()
+    };
+    const ref = await addDoc(collection(db,'jogos'), novoJogo);
+    allJogos.push({ id:ref.id, ...novoJogo });
+    count++;
+  }
+  closeModal('modalReplicar');
+  renderJogosGerente();
+  await renderGerenteHome();
+  loading(false);
+  showToast(`✅ ${count} jogo(s) replicados para ${destino}!`);
+};
 
 window.openModalNovoJogo = function(){
   document.getElementById('jogoEditId').value='';
