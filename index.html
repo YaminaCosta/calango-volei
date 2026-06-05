@@ -226,6 +226,11 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <input class="form-control" id="loginSenha" type="password" placeholder="Sua senha">
       </div>
       <button class="btn-primary" onclick="doLogin()">Entrar no app</button>
+      <div style="text-align:center;margin-top:12px">
+        <a onclick="doEsqueciSenha()" style="font-size:12px;color:var(--or);cursor:pointer;text-decoration:underline">
+          Esqueci minha senha
+        </a>
+      </div>
     </div>
 
     <!-- CADASTRO -->
@@ -398,6 +403,25 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           </div>
           <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="solicitarNivel()">
             <i class="ti ti-send"></i> Enviar solicitação
+          </button>
+        </div>
+        <br>
+        <div class="sec-title" style="font-size:14px;margin-bottom:10px">Alterar senha</div>
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Senha atual</label>
+            <input class="form-control" id="senhaAtual" type="password" placeholder="Digite sua senha atual">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nova senha</label>
+            <input class="form-control" id="senhaNova" type="password" placeholder="Mínimo 6 caracteres">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirmar nova senha</label>
+            <input class="form-control" id="senhaNovaConfirm" type="password" placeholder="Repita a nova senha">
+          </div>
+          <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="alterarSenha()">
+            <i class="ti ti-lock"></i> Alterar senha
           </button>
         </div>
       </div>
@@ -999,6 +1023,53 @@ window.solicitarNivel = async function(){
   if(!snap.empty){ showToast('⚠️ Você já tem uma solicitação pendente!'); return; }
   await addDoc(collection(db,'solicitacoesNivel'),{ usuarioId:currentUID, usuarioNome:currentUser.nome, nivelAtual:currentUser.nivel, nivelSolicitado:novo, status:'Pendente', criadoEm:serverTimestamp() });
   showToast('✅ Solicitação enviada ao gerente!');
+};
+
+// ── ALTERAR SENHA (usuário logado) ──
+window.alterarSenha = async function(){
+  const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+  const atual   = document.getElementById('senhaAtual').value;
+  const nova    = document.getElementById('senhaNova').value;
+  const confirm = document.getElementById('senhaNovaConfirm').value;
+  if(!atual||!nova||!confirm){ showToast('⚠️ Preencha todos os campos'); return; }
+  if(nova.length<6){ showToast('⚠️ A nova senha deve ter pelo menos 6 caracteres'); return; }
+  if(nova!==confirm){ showToast('⚠️ As senhas não conferem'); return; }
+  loading(true);
+  try{
+    const cred = EmailAuthProvider.credential(auth.currentUser.email, atual);
+    await reauthenticateWithCredential(auth.currentUser, cred);
+    await updatePassword(auth.currentUser, nova);
+    document.getElementById('senhaAtual').value='';
+    document.getElementById('senhaNova').value='';
+    document.getElementById('senhaNovaConfirm').value='';
+    loading(false);
+    showToast('✅ Senha alterada com sucesso!');
+  } catch(e){
+    loading(false);
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')
+      showToast('❌ Senha atual incorreta!');
+    else
+      showToast('❌ Erro ao alterar senha: '+e.message);
+  }
+};
+
+// ── ESQUECI A SENHA (envia email de redefinição) ──
+window.doEsqueciSenha = async function(){
+  const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email){ showToast('⚠️ Digite seu email no campo acima primeiro'); return; }
+  loading(true);
+  try{
+    await sendPasswordResetEmail(auth, email);
+    loading(false);
+    showToast('✅ Email de redefinição enviado! Verifique sua caixa de entrada.');
+  } catch(e){
+    loading(false);
+    if(e.code==='auth/user-not-found')
+      showToast('❌ Email não encontrado no sistema');
+    else
+      showToast('❌ Erro: '+e.message);
+  }
 };
 
 window.memberPage = function(pageId, btn){
