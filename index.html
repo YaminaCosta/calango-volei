@@ -517,8 +517,11 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div class="sec-header">
           <div class="sec-title">Configurar jogos</div>
           <div style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="gerentePage('pageGerentePeriodos',document.querySelectorAll('#gerenteNav .bnav-btn')[7])" style="background:#E8F3FE;color:#185FA5;border-color:#B5D4F4">
+              <i class="ti ti-calendar-stats"></i> Períodos
+            </button>
             <button class="btn-sm" onclick="openModalReplicar()" style="background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB">
-              <i class="ti ti-copy"></i> Replicar mês
+              <i class="ti ti-copy"></i> Replicar
             </button>
             <button class="btn-sm pr" onclick="openModalNovoJogo()"><i class="ti ti-plus"></i> Novo</button>
           </div>
@@ -527,13 +530,27 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
           <i class="ti ti-filter" style="color:var(--tx2);font-size:16px"></i>
           <select id="filtroMesJogos" class="form-control" style="flex:1;padding:8px 10px;font-size:13px" onchange="renderJogosGerente()">
-            <option value="">Todos os meses</option>
+            <option value="">Todos os períodos</option>
           </select>
           <button class="btn-sm" onclick="document.getElementById('filtroMesJogos').value='';renderJogosGerente()" title="Limpar filtro">
             <i class="ti ti-x"></i>
           </button>
         </div>
         <div id="jogosGerenteList"></div>
+      </div>
+
+      <!-- PERÍODOS -->
+      <div class="page" id="pageGerentePeriodos">
+        <div class="sec-header">
+          <div class="sec-title">Períodos de inscrição</div>
+          <button class="btn-sm pr" onclick="openModalNovoPeriodo()"><i class="ti ti-plus"></i> Novo</button>
+        </div>
+        <div class="card" style="background:#E8F3FE;border-color:#B5D4F4;margin-bottom:14px">
+          <div style="font-size:12px;color:#185FA5;line-height:1.6">
+            <strong>Como funciona:</strong> Cada período define quando os membros podem ver e se inscrever nos jogos. Ex: período <strong>06/2026</strong> com vigência de <strong>15/06 a 14/07</strong> — membros só veem jogos desse período enquanto ele estiver <strong>Aberto</strong>.
+          </div>
+        </div>
+        <div id="periodosGerenteList"></div>
       </div>
 
       <!-- RELATÓRIO -->
@@ -632,7 +649,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       </div>
 
     </div><!-- end gerenteContent -->
-    <div class="bottomnav" id="gerenteNav">
+    <div class="bottomnav" id="gerenteNav" style="overflow-x:auto;scrollbar-width:none">
       <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome',this)"><i class="ti ti-home"></i>Início</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteInscricoes',this)"><i class="ti ti-clipboard-check"></i>Inscrições</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteNivel',this)"><i class="ti ti-chart-arrows-vertical"></i>Nível</button>
@@ -640,6 +657,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <button class="bnav-btn" onclick="gerentePage('pageGerenteRelatorio',this)"><i class="ti ti-report-analytics"></i>Relatório</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos',this)"><i class="ti ti-calendar"></i>Jogos</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this)"><i class="ti ti-users"></i>Membros</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerentePeriodos',this)"><i class="ti ti-calendar-stats"></i>Períodos</button>
     </div>
   </div>
 
@@ -727,30 +745,17 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <option value="sim">Sim</option>
       </select>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">
-      Taxas de diarista
-    </div>
-    <div style="background:var(--am-bg);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--am);margin-bottom:10px;line-height:1.5">
-      Defina as taxas que o diarista poderá escolher ao solicitar vaga neste jogo.
-    </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Taxa Dia Simples (R$)</label>
-        <input class="form-control" id="jogoTaxaSimples" type="number" value="15" min="0" step="0.01" placeholder="15,00">
+        <label class="form-label">Taxa de diária (R$)</label>
+        <input class="form-control" id="jogoTaxaDiaria" type="number" value="0" min="0" step="0.01" placeholder="0,00">
       </div>
       <div class="form-group">
-        <label class="form-label">Taxa Dia Especial (R$)</label>
-        <input class="form-control" id="jogoTaxaEspecial" type="number" value="25" min="0" step="0.01" placeholder="25,00">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Rótulo Dia Simples</label>
-        <input class="form-control" id="jogoTaxaSimplesLabel" placeholder="Ex: Dia simples" value="Dia simples">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Rótulo Dia Especial</label>
-        <input class="form-control" id="jogoTaxaEspecialLabel" placeholder="Ex: Com professor" value="Com professor">
+        <label class="form-label">Vagas diaristas abertas?</label>
+        <select class="form-control" id="jogoVagasDiaristas">
+          <option value="nao">Não</option>
+          <option value="sim">Sim</option>
+        </select>
       </div>
     </div>
     <div class="modal-actions">
@@ -792,6 +797,41 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarReplicar()">
         <i class="ti ti-copy"></i> Replicar
       </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalNovoPeriodo">
+  <div class="modal">
+    <div class="modal-title">📅 Configurar período de inscrição</div>
+    <input type="hidden" id="periodoEditId">
+    <div class="form-group">
+      <label class="form-label">Nome do período (ex: 06/2026)</label>
+      <input class="form-control" id="periodoNome" placeholder="Ex: 06/2026">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Data início vigência</label>
+        <input class="form-control" id="periodoInicio" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data fim vigência</label>
+        <input class="form-control" id="periodoFim" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-control" id="periodoStatus">
+        <option value="Aberto">Aberto — membros podem se inscrever</option>
+        <option value="Fechado">Fechado — inscrições encerradas</option>
+      </select>
+    </div>
+    <div style="background:#E8F3FE;border-radius:9px;padding:10px 12px;font-size:12px;color:#185FA5;margin-top:4px;line-height:1.5">
+      Os jogos vinculados a este período (mesmo mês/ano no campo Mês/Ano do jogo) só aparecem para os membros enquanto o período estiver <strong>Aberto</strong> e dentro das datas.
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalNovoPeriodo')">Cancelar</button>
+      <button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarNovoPeriodo()">Salvar</button>
     </div>
   </div>
 </div>
@@ -966,19 +1006,27 @@ onAuthStateChanged(auth, async user => {
 
 // ── CACHES ──
 async function loadCaches(){
-  const [usSnap, jSnap] = await Promise.all([
+  const [usSnap, jSnap, pSnap] = await Promise.all([
     getDocs(collection(db,'usuarios')),
-    getDocs(collection(db,'jogos'))
+    getDocs(collection(db,'jogos')),
+    getDocs(collection(db,'periodos'))
   ]);
-  allUsers = usSnap.docs.map(d=>({uid:d.id,...d.data()}));
-  allJogos = jSnap.docs.map(d=>({id:d.id,...d.data()}));
+  allUsers   = usSnap.docs.map(d=>({uid:d.id,...d.data()}));
+  allJogos   = jSnap.docs.map(d=>({id:d.id,...d.data()}));
+  allPeriodos= pSnap.docs.map(d=>({id:d.id,...d.data()}));
 }
 
 // ════════════════════════════════
 // MEMBRO
 // ════════════════════════════════
 async function initMemberPage(){
-  const jogosNivel = allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto');
+  const periodo = periodoVigente();
+  // filtra jogos do período vigente e do nível do membro
+  const jogosNivel = allJogos.filter(j=>
+    j.nivel===currentUser.nivel &&
+    j.status==='Aberto' &&
+    (!periodo || j.mesAno===periodo.nome)
+  );
   const [inscSnap, dupSnap] = await Promise.all([
     getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID))),
     getDocs(query(collection(db,'duplas'),where('membros','array-contains',currentUID)))
@@ -986,28 +1034,47 @@ async function initMemberPage(){
   const inscricoes = inscSnap.docs.map(d=>({id:d.id,...d.data()}));
   const duplas     = dupSnap.docs.map(d=>({id:d.id,...d.data()}));
 
-  // total do mês
-  const hoje = new Date(); const mesAno = `${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
+  // total do período vigente
+  const periodoNome = periodo?.nome || '';
   let totalMes = 0;
-  inscricoes.forEach(i=>{ if(i.status==='Aprovado'){ const j=allJogos.find(x=>x.id===i.jogoId); if(j&&j.mesAno===mesAno) totalMes+=Number(j.valor||0); } });
+  inscricoes.forEach(i=>{ if(i.status==='Aprovado'&&i.jogoMesAno===periodoNome) totalMes+=Number(i.jogoValor||0); });
 
-  document.getElementById('welcomeName').textContent  = 'Olá, '+(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])+'! 👋';
-  document.getElementById('welcomeLevel').textContent = 'Nível: '+currentUser.nivel;
+  const nomeExib = currentUser.nomeApresentacao||currentUser.nome.split(' ')[0];
+  document.getElementById('welcomeName').textContent  = 'Olá, '+nomeExib+'! 👋';
+
+  // banner com info do período
+  let periodoInfo = '';
+  if(periodo){
+    periodoInfo = `Período ${periodo.nome} · ${formatDate(periodo.dataInicio)} a ${formatDate(periodo.dataFim)}`;
+  } else {
+    periodoInfo = 'Nenhum período de inscrição vigente no momento';
+  }
+  document.getElementById('welcomeLevel').textContent = `Nível: ${currentUser.nivel} · ${periodoInfo}`;
   document.getElementById('wbJogos').textContent      = jogosNivel.length;
   document.getElementById('wbDuplas').textContent     = duplas.length;
   document.getElementById('wbTotal').textContent      = totalMes.toFixed(2).replace('.',',');
   document.getElementById('badgeJogosCount').textContent = jogosNivel.length+' disponíveis';
 
-  renderJogosMember(inscricoes);
+  renderJogosMember(inscricoes, periodo);
   renderMinhasInscricoes(inscricoes);
   renderMinhasDuplas(duplas);
   renderPerfil();
 }
 
-function renderJogosMember(inscricoes){
-  const jogos = allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto');
+function renderJogosMember(inscricoes, periodo){
+  const jogos = allJogos.filter(j=>
+    j.nivel===currentUser.nivel &&
+    j.status==='Aberto' &&
+    (!periodo || j.mesAno===periodo.nome)
+  );
   const el = document.getElementById('jogosListMember');
-  if(!jogos.length){ el.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhum jogo disponível para o seu nível.</p></div>'; return; }
+  if(!jogos.length){
+    const msg = periodo
+      ? `Nenhum jogo disponível para seu nível no período ${periodo.nome}.`
+      : 'Nenhum período de inscrição vigente no momento.';
+    el.innerHTML=`<div class="empty"><i class="ti ti-calendar-off"></i><p>${msg}</p></div>`;
+    return;
+  }
   el.innerHTML = jogos.map(j=>{
     const jaInsc = inscricoes.find(i=>i.jogoId===j.id);
     const ocup   = inscricoes.filter(i=>i.jogoId===j.id&&i.status!=='Rejeitado').length;
@@ -1015,6 +1082,8 @@ function renderJogosMember(inscricoes){
     const btn    = jaInsc
       ? `<span class="badge ${jaInsc.status==='Aprovado'?'bg':jaInsc.status==='Rejeitado'?'br':'ba'}">${jaInsc.status}</span>`
       : `<button class="btn-sm pr" onclick="window.abrirInscricao('${j.id}')"><i class="ti ti-plus"></i> Inscrever</button>`;
+    const dBadge = j.vagasDiaristas==='sim'
+      ? `<span class="badge bg" style="font-size:10px"><i class="ti ti-run" style="font-size:10px"></i> Diaristas abertos</span>` : '';
     return `<div class="card">
       <div class="card-row">
         <div><div class="card-title">${j.nome}</div><div class="card-sub">${j.dia}${j.mesAno?' · '+j.mesAno:''} · ${j.tipo}</div></div>
@@ -1024,6 +1093,7 @@ function renderJogosMember(inscricoes){
         <span class="badge bb">${j.nivel}</span>
         <span class="badge ${livres<=2?'br':livres<=5?'ba':'bgy'}">${livres} vagas</span>
         ${j.professor==='sim'?'<span class="badge bor"><i class="ti ti-star" style="font-size:10px"></i> Com professor</span>':''}
+        ${dBadge}
       </div>
       <div class="valor-box">
         <span class="valor-label">Valor deste jogo</span>
@@ -1271,7 +1341,7 @@ async function initGerentePage(){
   await renderNivelSolic();
   renderJogosGerente();
   renderUsuariosGerente();
-  // pré-seleciona mês atual no relatório
+  await renderPeriodosGerente();
   const hoje=new Date();
   document.getElementById('relMes').value=String(hoje.getMonth()+1).padStart(2,'0');
   document.getElementById('relAno').value=hoje.getFullYear();
@@ -1378,10 +1448,15 @@ function renderJogosGerente(){
         <span class="badge bb">${j.nivel}</span>
         <span class="badge bor">R$ ${Number(j.valor||0).toFixed(2).replace('.',',')}</span>
         ${j.professor==='sim'?'<span class="badge bor"><i class="ti ti-star" style="font-size:10px"></i> Prof.</span>':''}
+        ${Number(j.taxaDiaria||0)>0?`<span class="badge bgy">Diária: R$ ${Number(j.taxaDiaria).toFixed(2).replace('.',',')}</span>`:''}
+        <span class="badge ${j.vagasDiaristas==='sim'?'bg':'bgy'}">${j.vagasDiaristas==='sim'?'Diaristas abertos':'Diaristas fechados'}</span>
       </div>
       <div style="display:flex;gap:8px;margin-top:11px">
         <button class="btn-sm" onclick="window.editarJogo('${j.id}')"><i class="ti ti-edit"></i> Editar</button>
         <button class="btn-sm" onclick="window.toggleJogo('${j.id}')">${j.status==='Aberto'?'<i class="ti ti-lock"></i> Fechar':'<i class="ti ti-lock-open"></i> Abrir'}</button>
+        <button class="btn-sm ${j.vagasDiaristas==='sim'?'no':'ok'}" onclick="window.toggleDiaristas('${j.id}')">
+          <i class="ti ti-run"></i> ${j.vagasDiaristas==='sim'?'Fechar diaristas':'Abrir diaristas'}
+        </button>
         <button class="btn-sm no" onclick="window.excluirJogo('${j.id}')"><i class="ti ti-trash"></i></button>
       </div>
     </div>`).join('')}
@@ -1452,10 +1527,8 @@ window.confirmarReplicar = async function(){
       vagas:            j.vagas || 12,
       valor:            j.valor || 0,
       professor:        j.professor || 'nao',
-      taxaSimples:      j.taxaSimples || 15,
-      taxaEspecial:     j.taxaEspecial || 25,
-      taxaSimplesLabel: j.taxaSimplesLabel || 'Dia simples',
-      taxaEspecialLabel:j.taxaEspecialLabel || 'Com professor',
+      taxaDiaria:       j.taxaDiaria || 0,
+      vagasDiaristas:   'nao',
       status:           'Aberto',
       criadoEm:         serverTimestamp()
     };
@@ -1477,10 +1550,8 @@ window.openModalNovoJogo = function(){
   document.getElementById('jogoValor').value='0';
   document.getElementById('jogoVagas').value='12';
   document.getElementById('jogoProfessor').value='nao';
-  document.getElementById('jogoTaxaSimples').value='15';
-  document.getElementById('jogoTaxaEspecial').value='25';
-  document.getElementById('jogoTaxaSimplesLabel').value='Dia simples';
-  document.getElementById('jogoTaxaEspecialLabel').value='Com professor';
+  document.getElementById('jogoTaxaDiaria').value='0';
+  document.getElementById('jogoVagasDiaristas').value='nao';
   document.getElementById('modalNovoJogo').classList.add('open');
 };
 
@@ -1495,10 +1566,8 @@ window.editarJogo = function(id){
   document.getElementById('jogoVagas').value=j.vagas||12;
   document.getElementById('jogoValor').value=j.valor||0;
   document.getElementById('jogoProfessor').value=j.professor||'nao';
-  document.getElementById('jogoTaxaSimples').value=j.taxaSimples||15;
-  document.getElementById('jogoTaxaEspecial').value=j.taxaEspecial||25;
-  document.getElementById('jogoTaxaSimplesLabel').value=j.taxaSimplesLabel||'Dia simples';
-  document.getElementById('jogoTaxaEspecialLabel').value=j.taxaEspecialLabel||'Com professor';
+  document.getElementById('jogoTaxaDiaria').value=j.taxaDiaria||0;
+  document.getElementById('jogoVagasDiaristas').value=j.vagasDiaristas||'nao';
   document.getElementById('modalNovoJogo').classList.add('open');
 };
 
@@ -1514,10 +1583,8 @@ window.confirmarNovoJogo = async function(){
     vagas:parseInt(document.getElementById('jogoVagas').value)||12,
     valor:parseFloat(document.getElementById('jogoValor').value)||0,
     professor:document.getElementById('jogoProfessor').value,
-    taxaSimples:parseFloat(document.getElementById('jogoTaxaSimples').value)||15,
-    taxaEspecial:parseFloat(document.getElementById('jogoTaxaEspecial').value)||25,
-    taxaSimplesLabel:document.getElementById('jogoTaxaSimplesLabel').value.trim()||'Dia simples',
-    taxaEspecialLabel:document.getElementById('jogoTaxaEspecialLabel').value.trim()||'Com professor',
+    taxaDiaria:parseFloat(document.getElementById('jogoTaxaDiaria').value)||0,
+    vagasDiaristas:document.getElementById('jogoVagasDiaristas').value,
     status:'Aberto'
   };
   loading(true);
@@ -1547,6 +1614,128 @@ window.toggleJogo = async function(id){
   showToast('✅ Status atualizado!');
   renderJogosGerente();
   await renderGerenteHome();
+  loading(false);
+};
+
+window.toggleDiaristas = async function(id){
+  const j=allJogos.find(x=>x.id===id);
+  const novo=j.vagasDiaristas==='sim'?'nao':'sim';
+  loading(true);
+  await updateDoc(doc(db,'jogos',id),{vagasDiaristas:novo});
+  j.vagasDiaristas=novo;
+  showToast(novo==='sim'?'✅ Vagas de diaristas abertas!':'✅ Vagas de diaristas fechadas.');
+  renderJogosGerente();
+  loading(false);
+};
+
+// ════════════════════════════════
+// PERÍODOS DE INSCRIÇÃO
+// ════════════════════════════════
+let allPeriodos = [];
+
+async function loadPeriodos(){
+  const snap = await getDocs(collection(db,'periodos'));
+  allPeriodos = snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+
+function periodoVigente(){
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  return allPeriodos.find(p=>{
+    if(p.status!=='Aberto') return false;
+    const ini = new Date(p.dataInicio+'T00:00:00');
+    const fim = new Date(p.dataFim+'T23:59:59');
+    return hoje>=ini && hoje<=fim;
+  }) || null;
+}
+
+async function renderPeriodosGerente(){
+  const el = document.getElementById('periodosGerenteList');
+  if(!el) return;
+  if(!allPeriodos.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhum período cadastrado ainda.</p></div>';
+    return;
+  }
+  el.innerHTML=allPeriodos.sort((a,b)=>a.nome>b.nome?-1:1).map(p=>{
+    const hoje=new Date(); hoje.setHours(0,0,0,0);
+    const ini=new Date(p.dataInicio+'T00:00:00');
+    const fim=new Date(p.dataFim+'T23:59:59');
+    const vigente=p.status==='Aberto'&&hoje>=ini&&hoje<=fim;
+    return `<div class="card" style="${vigente?'border:2px solid var(--ok)':''}">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${p.nome} ${vigente?'<span class="badge bg" style="font-size:10px">Vigente</span>':''}</div>
+          <div class="card-sub">${formatDate(p.dataInicio)} até ${formatDate(p.dataFim)}</div>
+        </div>
+        <span class="badge ${p.status==='Aberto'?'bg':'bgy'}">${p.status}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn-sm" onclick="window.editarPeriodo('${p.id}')"><i class="ti ti-edit"></i> Editar</button>
+        <button class="btn-sm ${p.status==='Aberto'?'no':'ok'}" onclick="window.togglePeriodo('${p.id}')">
+          ${p.status==='Aberto'?'<i class="ti ti-lock"></i> Fechar':'<i class="ti ti-lock-open"></i> Abrir'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatDate(iso){
+  if(!iso) return '—';
+  const [y,m,d]=iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+window.openModalNovoPeriodo = function(){
+  document.getElementById('periodoEditId').value='';
+  document.getElementById('periodoNome').value='';
+  document.getElementById('periodoInicio').value='';
+  document.getElementById('periodoFim').value='';
+  document.getElementById('periodoStatus').value='Aberto';
+  document.getElementById('modalNovoPeriodo').classList.add('open');
+};
+
+window.editarPeriodo = function(id){
+  const p=allPeriodos.find(x=>x.id===id);
+  document.getElementById('periodoEditId').value=id;
+  document.getElementById('periodoNome').value=p.nome||'';
+  document.getElementById('periodoInicio').value=p.dataInicio||'';
+  document.getElementById('periodoFim').value=p.dataFim||'';
+  document.getElementById('periodoStatus').value=p.status||'Aberto';
+  document.getElementById('modalNovoPeriodo').classList.add('open');
+};
+
+window.confirmarNovoPeriodo = async function(){
+  const nome=document.getElementById('periodoNome').value.trim();
+  const ini=document.getElementById('periodoInicio').value;
+  const fim=document.getElementById('periodoFim').value;
+  if(!nome||!ini||!fim){ showToast('⚠️ Preencha todos os campos'); return; }
+  if(ini>fim){ showToast('⚠️ Data início deve ser antes da data fim'); return; }
+  const dados={ nome, dataInicio:ini, dataFim:fim, status:document.getElementById('periodoStatus').value };
+  loading(true);
+  const editId=document.getElementById('periodoEditId').value;
+  if(editId){
+    await updateDoc(doc(db,'periodos',editId),dados);
+    const idx=allPeriodos.findIndex(p=>p.id===editId);
+    if(idx>=0) allPeriodos[idx]={id:editId,...dados};
+    showToast('✅ Período atualizado!');
+  } else {
+    const ref=await addDoc(collection(db,'periodos'),{...dados,criadoEm:serverTimestamp()});
+    allPeriodos.push({id:ref.id,...dados});
+    showToast('✅ Período criado!');
+  }
+  closeModal('modalNovoPeriodo');
+  await renderPeriodosGerente();
+  loading(false);
+};
+
+window.togglePeriodo = async function(id){
+  const p=allPeriodos.find(x=>x.id===id);
+  const novo=p.status==='Aberto'?'Fechado':'Aberto';
+  loading(true);
+  await updateDoc(doc(db,'periodos',id),{status:novo});
+  p.status=novo;
+  showToast(novo==='Aberto'?'✅ Período aberto!':'✅ Período fechado.');
+  await renderPeriodosGerente();
   loading(false);
 };
 
@@ -2159,23 +2348,25 @@ window.carregarInfoDiaMembro = async function(){
         <div style="font-size:12px;color:var(--tx2);margin-top:3px">Taxa: R$ ${Number(meuRegistro.taxa||0).toFixed(2).replace('.',',')}</div>
       </div>`;
     } else {
-      html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Solicitar vaga de diarista</div>
-      <div class="card" style="background:var(--am-bg);margin-bottom:10px">
-        <div style="font-size:12px;color:var(--am);line-height:1.5">Como diarista, você paga uma taxa especial e participa se houver vagas disponíveis (por desistência de membros). A aprovação é feita pelo gerente.</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-        <div class="card" style="cursor:pointer;text-align:center;border:2px solid var(--or)" id="taxaOpt1" onclick="selecionarTaxa(${jogo.taxaSimples||15})">
-          <div style="font-size:18px;font-weight:700;color:var(--or)">R$ ${Number(jogo.taxaSimples||15).toFixed(2).replace('.',',')}</div>
-          <div style="font-size:11px;color:var(--tx2)">${jogo.taxaSimplesLabel||'Dia simples'}</div>
+      html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Solicitar vaga de diarista</div>`;
+      if(jogo.vagasDiaristas!=='sim'){
+        html+=`<div class="card" style="background:#FEEEEE">
+          <div style="font-size:13px;color:#A32D2D;font-weight:500">❌ Vagas de diaristas fechadas</div>
+          <div style="font-size:12px;color:#A32D2D;margin-top:4px">O gerente ainda não abriu vagas para diaristas neste jogo.</div>
+        </div>`;
+      } else {
+        const taxa = Number(jogo.taxaDiaria||0);
+        html+=`<div class="card" style="background:var(--am-bg);margin-bottom:10px">
+          <div style="font-size:12px;color:var(--am);line-height:1.5">Como diarista, você paga a taxa abaixo e participa se houver vagas disponíveis. A aprovação é feita pelo gerente.</div>
         </div>
-        <div class="card" style="cursor:pointer;text-align:center;border:2px solid transparent" id="taxaOpt2" onclick="selecionarTaxa(${jogo.taxaEspecial||25})">
-          <div style="font-size:18px;font-weight:700;color:var(--or)">R$ ${Number(jogo.taxaEspecial||25).toFixed(2).replace('.',',')}</div>
-          <div style="font-size:11px;color:var(--tx2)">${jogo.taxaEspecialLabel||'Com professor'}</div>
+        <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:12px">
+          <div style="font-size:24px;font-weight:700;color:var(--ok)">R$ ${taxa.toFixed(2).replace('.',',')}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:2px">Taxa de diária para este jogo</div>
         </div>
-      </div>
-      <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="window.solicitarDiaria('${jogoId}')">
-        <i class="ti ti-send"></i> Enviar solicitação
-      </button>`;
+        <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="window.solicitarDiaria('${jogoId}',${taxa})">
+          <i class="ti ti-send"></i> Solicitar vaga de diarista
+        </button>`;
+      }
     }
   }
   panel.innerHTML=html;
@@ -2211,14 +2402,14 @@ window.membroConfirmaPresenca = async function(jogoId, confirmado){
   await carregarInfoDiaMembro(); loading(false);
 };
 
-window.solicitarDiaria = async function(jogoId){
+window.solicitarDiaria = async function(jogoId, taxa){
   loading(true);
   const snap = await getDocs(query(collection(db,'diaristas'), where('jogoId','==',jogoId)));
   const jaExiste = snap.docs.find(d=>d.data().usuarioId===currentUID);
   if(jaExiste){ loading(false); showToast('⚠️ Você já tem uma solicitação para este jogo!'); return; }
   await addDoc(collection(db,'diaristas'),{
     jogoId, usuarioId:currentUID, usuarioNome:currentUser.nome,
-    tipo:'diarista', taxa:_taxaSelecionada, status:'Pendente', criadoEm:serverTimestamp()
+    tipo:'diarista', taxa:taxa||0, status:'Pendente', criadoEm:serverTimestamp()
   });
   loading(false);
   showToast('✅ Solicitação enviada! Aguardando aprovação do gerente.');
