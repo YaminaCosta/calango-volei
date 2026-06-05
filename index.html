@@ -903,6 +903,7 @@ window.doCadastro = async function(){
     const uid  = cred.user.uid;
     await setDoc(doc(db,'usuarios',uid),{
       nome, nomeApresentacao:nomeApres, cpf, dataNascimento:nasc, telefone:tel, nivel, status:'Ativo',
+      nivelAprovado: false,
       emergenciaNome:eNome, emergenciaTel:eTel, doenca:doenca||'Nenhuma',
       comoConheceu:conheceu, email, tipo:'Membro',
       criadoEm: serverTimestamp()
@@ -1318,22 +1319,6 @@ window.rejeitarInsc = async function(id){
   await renderInscricoesPend(); await renderGerenteHome(); loading(false);
 };
 
-async function renderNivelSolic(){
-  const snap=await getDocs(query(collection(db,'solicitacoesNivel'),where('status','==','Pendente')));
-  const el=document.getElementById('nivelSolicList');
-  if(snap.empty){ el.innerHTML='<div class="empty"><i class="ti ti-circle-check"></i><p>Nenhuma solicitação pendente.</p></div>'; return; }
-  el.innerHTML=snap.docs.map(d=>{
-    const s={id:d.id,...d.data()};
-    return `<div class="card">
-      <div class="card-title">${s.usuarioNome}</div>
-      <div class="card-sub">${s.nivelAtual} → ${s.nivelSolicitado}</div>
-      <div style="display:flex;gap:8px;margin-top:11px">
-        <button class="btn-sm ok" onclick="window.aprovarNivel('${s.id}','${s.usuarioId}','${s.nivelSolicitado}')"><i class="ti ti-check"></i> Aprovar</button>
-        <button class="btn-sm no" onclick="window.rejeitarNivel('${s.id}')"><i class="ti ti-x"></i> Rejeitar</button>
-      </div>
-    </div>`;
-  }).join('');
-}
 
 window.aprovarNivel = async function(id, uid, novoNivel){
   loading(true);
@@ -2181,14 +2166,14 @@ window.carregarInfoDiaMembro = async function(){
 
 let _taxaSelecionada = 15;
 window.selecionarTaxa = function(v){
-  _taxaSelecionada=v;
-  const o1=document.getElementById('taxaOpt1');
-  const o2=document.getElementById('taxaOpt2');
-  if(o1) o1.style.borderColor = (o1.textContent.includes(String(v).replace('.',','))||o1.querySelector('div')?.textContent.includes(String(v).replace('.',',')))?'var(--or)':'transparent';
-  if(o2) o2.style.borderColor = (o2.textContent.includes(String(v).replace('.',','))||o2.querySelector('div')?.textContent.includes(String(v).replace('.',',')))?'var(--or)':'transparent';
-  // forma mais simples: compara data-taxa
-  if(o1) o1.style.borderColor = Number(o1.dataset.taxa)===v?'var(--or)':'transparent';
-  if(o2) o2.style.borderColor = Number(o2.dataset.taxa)===v?'var(--or)':'transparent';
+  _taxaSelecionada = v;
+  const o1 = document.getElementById('taxaOpt1');
+  const o2 = document.getElementById('taxaOpt2');
+  if(o1) o1.style.borderColor = 'transparent';
+  if(o2) o2.style.borderColor = 'transparent';
+  // destaca o card clicado comparando o onclick
+  if(o1 && o1.getAttribute('onclick')?.includes(String(v))) o1.style.borderColor = 'var(--or)';
+  if(o2 && o2.getAttribute('onclick')?.includes(String(v))) o2.style.borderColor = 'var(--or)';
 };
 
 window.membroConfirmaPresenca = async function(jogoId, confirmado){
@@ -2225,3 +2210,4 @@ window.closeModal = closeModal;
 </script>
 </body>
 </html>
+  
