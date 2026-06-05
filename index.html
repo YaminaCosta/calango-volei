@@ -327,7 +327,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
 <!-- ===== APP PRINCIPAL ===== -->
 <div class="screen" id="screenMain">
   <div class="topbar">
-    <div class="topbar-logo">
+    <div class="topbar-logo" style="cursor:pointer" onclick="goHome()" title="Ir para o início">
       <div class="topbar-ball">🏐</div>
       <span class="topbar-name">Calango Vôlei</span>
     </div>
@@ -500,6 +500,16 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             <button class="btn-sm pr" onclick="openModalNovoJogo()"><i class="ti ti-plus"></i> Novo</button>
           </div>
         </div>
+        <!-- FILTRO DE MÊS -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <i class="ti ti-filter" style="color:var(--tx2);font-size:16px"></i>
+          <select id="filtroMesJogos" class="form-control" style="flex:1;padding:8px 10px;font-size:13px" onchange="renderJogosGerente()">
+            <option value="">Todos os meses</option>
+          </select>
+          <button class="btn-sm" onclick="document.getElementById('filtroMesJogos').value='';renderJogosGerente()" title="Limpar filtro">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
         <div id="jogosGerenteList"></div>
       </div>
 
@@ -519,15 +529,52 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             <input type="number" id="relAno" value="2026" min="2024" max="2030" style="width:80px">
             <button class="btn-sm pr" onclick="gerarRelatorio()"><i class="ti ti-search"></i></button>
           </div>
+          <!-- ABAS DO RELATÓRIO -->
+          <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px" id="relTabs" style="display:none">
+            <button id="tabRelJogo" onclick="switchRelTab('jogo')"
+              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">
+              Por jogo
+            </button>
+            <button id="tabRelMatriz" onclick="switchRelTab('matriz')"
+              style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">
+              Membros × Dias
+            </button>
+          </div>
           <div id="relatorioContent">
             <div class="empty"><i class="ti ti-report"></i><p>Selecione o mês e clique em pesquisar</p></div>
           </div>
+          <div id="relatorioMatriz" style="display:none"></div>
         </div>
       </div>
 
       <!-- USUÁRIOS GERENTE -->
       <div class="page" id="pageGerenteUsuarios">
-        <div class="sec-header"><div class="sec-title">Membros cadastrados</div></div>
+        <div class="sec-header">
+          <div class="sec-title">Membros cadastrados</div>
+          <span class="badge bb" id="badgeMembrosCount"></span>
+        </div>
+        <!-- BUSCA -->
+        <div style="position:relative;margin-bottom:8px">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx2);font-size:15px;pointer-events:none"></i>
+          <input id="buscaMembro" class="form-control" placeholder="Buscar por nome, email ou apelido..."
+            style="padding-left:34px;font-size:13px"
+            oninput="renderUsuariosGerente()">
+        </div>
+        <!-- FILTROS -->
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <select id="filtroNivelMembro" class="form-control" style="flex:1;min-width:100px;padding:7px 10px;font-size:12px" onchange="renderUsuariosGerente()">
+            <option value="">Todos os níveis</option>
+            <option>Iniciante</option>
+            <option>Intermediário</option>
+            <option>Avançado</option>
+          </select>
+          <select id="filtroStatusMembro" class="form-control" style="flex:1;min-width:90px;padding:7px 10px;font-size:12px" onchange="renderUsuariosGerente()">
+            <option value="">Todos os status</option>
+            <option>Ativo</option>
+            <option>Inativo</option>
+          </select>
+          <button class="btn-sm" title="Limpar filtros" onclick="limparFiltrosMembros()"><i class="ti ti-x"></i></button>
+        </div>
         <div id="usuariosGerenteList"></div>
       </div>
 
@@ -690,6 +737,15 @@ let modalJogoAtual = null;
 function loading(show){ document.getElementById('loadingOverlay').style.display = show?'flex':'none'; }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// ── Ir para o início ao clicar no logo ──
+window.goHome = function(){
+  if(currentUser?.tipo==='Membro'){
+    memberPage('pageMemberHome', document.querySelector('#memberNav .bnav-btn'));
+  } else {
+    gerentePage('pageGerenteHome', document.querySelector('#gerenteNav .bnav-btn'));
+  }
+};
 
 // ── Tabs login/cadastro ──
 window.switchTab = function(tab){
@@ -1212,12 +1268,32 @@ window.rejeitarNivel = async function(id){
 };
 
 function renderJogosGerente(){
-  const el=document.getElementById('jogosGerenteList');
-  if(!allJogos.length){ el.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Nenhum jogo cadastrado ainda.</p></div>'; return; }
-  el.innerHTML=allJogos.map(j=>{
-    return `<div class="card">
+  const el = document.getElementById('jogosGerenteList');
+  const filtro = document.getElementById('filtroMesJogos');
+
+  // atualiza opções do filtro com meses disponíveis
+  const meses = [...new Set(allJogos.map(j=>j.mesAno).filter(Boolean))].sort();
+  const valorAtual = filtro.value;
+  filtro.innerHTML = '<option value="">Todos os meses</option>' +
+    meses.map(m=>`<option value="${m}" ${m===valorAtual?'selected':''}>${m}</option>`).join('');
+
+  // aplica filtro
+  const jogosFiltrados = valorAtual ? allJogos.filter(j=>j.mesAno===valorAtual) : allJogos;
+
+  if(!jogosFiltrados.length){
+    el.innerHTML=`<div class="empty"><i class="ti ti-calendar-off"></i><p>${allJogos.length?'Nenhum jogo no mês selecionado.':'Nenhum jogo cadastrado ainda.'}</p></div>`;
+    return;
+  }
+
+  // agrupa por mês para exibição organizada
+  const porMes = {};
+  jogosFiltrados.forEach(j=>{ const m=j.mesAno||'Sem mês'; if(!porMes[m]) porMes[m]=[]; porMes[m].push(j); });
+
+  el.innerHTML = Object.entries(porMes).sort().map(([mes, jogos])=>`
+    <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">${mes}</div>
+    ${jogos.map(j=>`<div class="card">
       <div class="card-row">
-        <div><div class="card-title">${j.nome}</div><div class="card-sub">${j.dia}${j.mesAno?' · '+j.mesAno:''} · ${j.tipo}</div></div>
+        <div><div class="card-title">${j.nome}</div><div class="card-sub">${j.dia} · ${j.tipo}</div></div>
         <span class="badge ${j.status==='Aberto'?'bg':'bgy'}">${j.status}</span>
       </div>
       <div class="card-meta">
@@ -1230,8 +1306,8 @@ function renderJogosGerente(){
         <button class="btn-sm" onclick="window.toggleJogo('${j.id}')">${j.status==='Aberto'?'<i class="ti ti-lock"></i> Fechar':'<i class="ti ti-lock-open"></i> Abrir'}</button>
         <button class="btn-sm no" onclick="window.excluirJogo('${j.id}')"><i class="ti ti-trash"></i></button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('')}
+  `).join('');
 }
 
 window.openModalReplicar = function(){
@@ -1392,38 +1468,122 @@ window.excluirJogo = async function(id){
 };
 
 // ── RELATÓRIO ──
-window.gerarRelatorio = async function(){
-  const mes=document.getElementById('relMes').value;
-  const ano=document.getElementById('relAno').value;
-  const mesAno=`${mes}/${ano}`;
-  loading(true);
-  const snap=await getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado')));
-  const inscs=snap.docs.map(d=>({id:d.id,...d.data()}));
-  const el=document.getElementById('relatorioContent');
-  if(!inscs.length){ el.innerHTML='<div class="empty"><i class="ti ti-report"></i><p>Nenhuma inscrição aprovada em '+mesAno+'</p></div>'; loading(false); return; }
+let _relInscs = []; // cache das inscrições do mês atual
 
-  // agrupa por jogo
+window.switchRelTab = function(tab){
+  document.getElementById('tabRelJogo').style.background   = tab==='jogo'?'#fff':'transparent';
+  document.getElementById('tabRelJogo').style.color        = tab==='jogo'?'var(--tx)':'var(--tx2)';
+  document.getElementById('tabRelMatriz').style.background = tab==='matriz'?'#fff':'transparent';
+  document.getElementById('tabRelMatriz').style.color      = tab==='matriz'?'var(--tx)':'var(--tx2)';
+  document.getElementById('relatorioContent').style.display = tab==='jogo'?'block':'none';
+  document.getElementById('relatorioMatriz').style.display  = tab==='matriz'?'block':'none';
+};
+
+window.gerarRelatorio = async function(){
+  const mes   = document.getElementById('relMes').value;
+  const ano   = document.getElementById('relAno').value;
+  const mesAno= `${mes}/${ano}`;
+  loading(true);
+  const snap = await getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado')));
+  _relInscs  = snap.docs.map(d=>({id:d.id,...d.data()}));
+  const el   = document.getElementById('relatorioContent');
+  const elM  = document.getElementById('relatorioMatriz');
+
+  if(!_relInscs.length){
+    document.getElementById('relTabs').style.display='none';
+    el.style.display='block'; elM.style.display='none';
+    el.innerHTML='<div class="empty"><i class="ti ti-report"></i><p>Nenhuma inscrição aprovada em '+mesAno+'</p></div>';
+    loading(false); return;
+  }
+
+  // mostra abas e inicia na aba "Por jogo"
+  document.getElementById('relTabs').style.display='flex';
+  switchRelTab('jogo');
+
+  // ── ABA 1: por jogo ──
   const porJogo={};
-  inscs.forEach(i=>{ if(!porJogo[i.jogoNome]) porJogo[i.jogoNome]={valor:i.jogoValor||0,membros:[]}; porJogo[i.jogoNome].membros.push(i.usuarioNome); });
+  _relInscs.forEach(i=>{ if(!porJogo[i.jogoNome]) porJogo[i.jogoNome]={valor:i.jogoValor||0,membros:[]}; porJogo[i.jogoNome].membros.push(i.usuarioNome); });
   let totalGeral=0;
   let rows='';
   Object.entries(porJogo).forEach(([jNome,dados])=>{
     const sub=dados.membros.length*dados.valor;
     totalGeral+=sub;
-    rows+=`<tr><td style="font-weight:600">${jNome}</td><td>${dados.membros.length}</td><td>R$ ${Number(dados.valor).toFixed(2).replace('.',',')}</td><td>R$ ${sub.toFixed(2).replace('.',',')}</td></tr>
-    <tr><td colspan="4" style="font-size:11px;color:var(--tx2);padding:4px 10px 10px">${dados.membros.join(', ')}</td></tr>`;
+    rows+=`<tr>
+      <td style="font-weight:600">${jNome}</td>
+      <td style="text-align:center">${dados.membros.length}</td>
+      <td style="text-align:right">R$ ${Number(dados.valor).toFixed(2).replace('.',',')}</td>
+      <td style="text-align:right">R$ ${sub.toFixed(2).replace('.',',')}</td>
+    </tr>
+    <tr><td colspan="4" style="font-size:11px;color:var(--tx2);padding:3px 10px 10px">${dados.membros.join(', ')}</td></tr>`;
   });
-
   el.innerHTML=`
-    <div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Período: <strong>${mesAno}</strong> · ${inscs.length} inscrições aprovadas</div>
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Período: <strong>${mesAno}</strong> · ${_relInscs.length} inscrições aprovadas</div>
     <div style="overflow-x:auto">
     <table class="rel-table">
-      <thead><tr><th>Jogo</th><th>Inscritos</th><th>Valor/pessoa</th><th>Total</th></tr></thead>
+      <thead><tr><th>Jogo</th><th style="text-align:center">Inscritos</th><th style="text-align:right">Valor/pessoa</th><th style="text-align:right">Total</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     <div class="rel-total"><span>Total arrecadado em ${mesAno}</span><span>R$ ${totalGeral.toFixed(2).replace('.',',')}</span></div>
     <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarCSV('${mesAno}')">
-      <i class="ti ti-download"></i> Exportar CSV
+      <i class="ti ti-download"></i> Exportar CSV (por jogo)
+    </button>`;
+
+  // ── ABA 2: matriz membros × dias ──
+  // monta lista de jogos únicos e membros únicos
+  const jogosUnicos  = [...new Set(_relInscs.map(i=>i.jogoNome))].sort();
+  const membrosUnicos= [...new Set(_relInscs.map(i=>i.usuarioNome))].sort();
+
+  // índice: membroNome → jogoNome → valor
+  const idx={};
+  _relInscs.forEach(i=>{
+    if(!idx[i.usuarioNome]) idx[i.usuarioNome]={};
+    idx[i.usuarioNome][i.jogoNome]=(idx[i.usuarioNome][i.jogoNome]||0)+Number(i.jogoValor||0);
+  });
+
+  const thJogos = jogosUnicos.map(j=>`<th style="min-width:90px;white-space:nowrap;font-size:11px">${j}</th>`).join('');
+  const tbRows  = membrosUnicos.map(m=>{
+    const cels = jogosUnicos.map(j=>{
+      const v = idx[m]?.[j];
+      return v ? `<td style="text-align:right;font-size:12px;color:var(--ok)">R$ ${v.toFixed(2).replace('.',',')}</td>`
+               : `<td style="text-align:center;color:var(--tx2);font-size:11px">—</td>`;
+    }).join('');
+    const total = jogosUnicos.reduce((s,j)=>s+(idx[m]?.[j]||0),0);
+    return `<tr>
+      <td style="font-weight:500;font-size:12px;white-space:nowrap">${m}</td>
+      ${cels}
+      <td style="text-align:right;font-weight:700;font-size:12px;color:var(--or)">R$ ${total.toFixed(2).replace('.',',')}</td>
+    </tr>`;
+  }).join('');
+
+  // linha de totais por jogo
+  const totaisColunas = jogosUnicos.map(j=>{
+    const t=_relInscs.filter(i=>i.jogoNome===j).reduce((s,i)=>s+Number(i.jogoValor||0),0);
+    return `<td style="text-align:right;font-weight:700;font-size:12px">R$ ${t.toFixed(2).replace('.',',')}</td>`;
+  }).join('');
+  const totalTudo = _relInscs.reduce((s,i)=>s+Number(i.jogoValor||0),0);
+
+  elM.innerHTML=`
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:8px"><strong>${membrosUnicos.length}</strong> membros · <strong>${jogosUnicos.length}</strong> dias de jogo · Total: <strong style="color:var(--or)">R$ ${totalTudo.toFixed(2).replace('.',',')}</strong></div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <table class="rel-table" style="table-layout:auto;min-width:100%">
+      <thead>
+        <tr>
+          <th style="min-width:120px;position:sticky;left:0;background:var(--gd)">Membro</th>
+          ${thJogos}
+          <th style="text-align:right;background:#854F0B">Total</th>
+        </tr>
+      </thead>
+      <tbody>${tbRows}</tbody>
+      <tfoot>
+        <tr style="background:var(--sur2)">
+          <td style="font-weight:700;font-size:12px">Total por jogo</td>
+          ${totaisColunas}
+          <td style="text-align:right;font-weight:700;font-size:12px;color:var(--or)">R$ ${totalTudo.toFixed(2).replace('.',',')}</td>
+        </tr>
+      </tfoot>
+    </table></div>
+    <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarMatrizCSV('${mesAno}')">
+      <i class="ti ti-download"></i> Exportar CSV (matriz)
     </button>`;
   loading(false);
 };
@@ -1439,24 +1599,84 @@ window.exportarCSV = async function(mesAno){
   showToast('✅ CSV exportado!');
 };
 
+window.exportarMatrizCSV = function(mesAno){
+  const jogosUnicos  = [...new Set(_relInscs.map(i=>i.jogoNome))].sort();
+  const membrosUnicos= [...new Set(_relInscs.map(i=>i.usuarioNome))].sort();
+  const idx={};
+  _relInscs.forEach(i=>{
+    if(!idx[i.usuarioNome]) idx[i.usuarioNome]={};
+    idx[i.usuarioNome][i.jogoNome]=(idx[i.usuarioNome][i.jogoNome]||0)+Number(i.jogoValor||0);
+  });
+  const header=['Membro',...jogosUnicos,'TOTAL'];
+  const rows=membrosUnicos.map(m=>{
+    const vals=jogosUnicos.map(j=>idx[m]?.[j]?Number(idx[m][j]).toFixed(2):'0.00');
+    const total=jogosUnicos.reduce((s,j)=>s+(idx[m]?.[j]||0),0);
+    return [m,...vals,total.toFixed(2)];
+  });
+  // linha de totais
+  const totCols=jogosUnicos.map(j=>_relInscs.filter(i=>i.jogoNome===j).reduce((s,i)=>s+Number(i.jogoValor||0),0).toFixed(2));
+  const totTudo=_relInscs.reduce((s,i)=>s+Number(i.jogoValor||0),0).toFixed(2);
+  rows.push(['TOTAL POR JOGO',...totCols,totTudo]);
+  const csv=[header,...rows].map(r=>r.join(';')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`calango_matriz_${mesAno.replace('/','_')}.csv`; a.click();
+  showToast('✅ Matriz exportada!');
+};
+
 function renderUsuariosGerente(){
-  const membros=allUsers.filter(u=>u.tipo==='Membro');
-  const el=document.getElementById('usuariosGerenteList');
-  if(!membros.length){ el.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro cadastrado ainda.</p></div>'; return; }
+  const busca  = (document.getElementById('buscaMembro')?.value||'').toLowerCase().trim();
+  const nivel  = document.getElementById('filtroNivelMembro')?.value||'';
+  const status = document.getElementById('filtroStatusMembro')?.value||'';
+  const el     = document.getElementById('usuariosGerenteList');
+
+  let membros = allUsers.filter(u=>u.tipo==='Membro');
+
+  // aplica filtros
+  if(busca)  membros = membros.filter(u=>
+    (u.nome||'').toLowerCase().includes(busca) ||
+    (u.email||'').toLowerCase().includes(busca) ||
+    (u.nomeApresentacao||'').toLowerCase().includes(busca)
+  );
+  if(nivel)  membros = membros.filter(u=>u.nivel===nivel);
+  if(status) membros = membros.filter(u=>u.status===status);
+
+  // atualiza contador
+  const total = allUsers.filter(u=>u.tipo==='Membro').length;
+  const badge = document.getElementById('badgeMembrosCount');
+  if(badge) badge.textContent = membros.length === total ? `${total}` : `${membros.length} de ${total}`;
+
+  if(!allUsers.filter(u=>u.tipo==='Membro').length){
+    el.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro cadastrado ainda.</p></div>'; return;
+  }
+  if(!membros.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-search"></i><p>Nenhum membro encontrado com os filtros aplicados.</p></div>'; return;
+  }
+
   el.innerHTML=membros.map(u=>`<div class="card" style="cursor:pointer" onclick="window.verMembro('${u.uid}')">
     <div class="card-row">
       <div style="display:flex;align-items:center;gap:11px">
         <div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-        <div><div class="card-title">${u.nome}</div><div class="card-sub">${u.email}</div></div>
+        <div>
+          <div class="card-title">${u.nome}${u.nomeApresentacao?` <span style="font-size:12px;color:var(--or);font-weight:400">(${u.nomeApresentacao})</span>`:''}</div>
+          <div class="card-sub">${u.email}</div>
+        </div>
       </div>
       <span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span>
     </div>
     <div class="card-meta">
       <span class="badge bb">${u.nivel}</span>
-      <span class="badge bgy">${u.telefone}</span>
+      <span class="badge bgy">${u.telefone||'—'}</span>
     </div>
   </div>`).join('');
 }
+
+window.limparFiltrosMembros = function(){
+  document.getElementById('buscaMembro').value='';
+  document.getElementById('filtroNivelMembro').value='';
+  document.getElementById('filtroStatusMembro').value='';
+  renderUsuariosGerente();
+};
 
 window.verMembro = function(uid){
   const u=allUsers.find(x=>x.uid===uid);
@@ -1464,25 +1684,89 @@ window.verMembro = function(uid){
   document.getElementById('modalMembroContent').innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <div class="avatar" style="width:48px;height:48px;font-size:16px;flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-      <div><div style="font-size:16px;font-weight:700">${u.nome}</div><div style="font-size:13px;color:var(--tx2)">${u.email}</div></div>
+      <div>
+        <div style="font-size:16px;font-weight:700">${u.nome}</div>
+        <div style="font-size:12px;color:var(--or);font-weight:500">${u.nomeApresentacao||''}</div>
+        <div style="font-size:13px;color:var(--tx2)">${u.email}</div>
+      </div>
     </div>
     <hr>
-    <table style="width:100%;font-size:13px;margin-top:10px">
-      <tr><td style="color:var(--tx2);padding:5px 0">CPF</td><td style="text-align:right;font-weight:500">${u.cpf||'—'}</td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Nascimento</td><td style="text-align:right;font-weight:500">${u.dataNascimento||'—'}</td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Telefone</td><td style="text-align:right;font-weight:500">${u.telefone||'—'}</td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Nível</td><td style="text-align:right"><span class="badge bb">${u.nivel}</span></td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Status</td><td style="text-align:right"><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Emergência</td><td style="text-align:right;font-weight:500">${u.emergenciaNome||'—'} · ${u.emergenciaTel||'—'}</td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Doença</td><td style="text-align:right;font-weight:500">${u.doenca||'Nenhuma'}</td></tr>
-      <tr><td style="color:var(--tx2);padding:5px 0">Como conheceu</td><td style="text-align:right;font-weight:500">${u.comoConheceu||'—'}</td></tr>
+    <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 8px">Dados editáveis</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nome completo</label>
+        <input class="form-control" id="editNome" value="${u.nome||''}" style="font-size:13px;padding:8px 10px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome de apresentação</label>
+        <input class="form-control" id="editNomeApres" value="${u.nomeApresentacao||''}" style="font-size:13px;padding:8px 10px">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Telefone</label>
+        <input class="form-control" id="editTelefone" value="${u.telefone||''}" style="font-size:13px;padding:8px 10px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nível</label>
+        <select class="form-control" id="editNivel" style="font-size:13px;padding:8px 10px">
+          <option ${u.nivel==='Iniciante'?'selected':''}>Iniciante</option>
+          <option ${u.nivel==='Intermediário'?'selected':''}>Intermediário</option>
+          <option ${u.nivel==='Avançado'?'selected':''}>Avançado</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Emergência (nome)</label>
+        <input class="form-control" id="editEmergNome" value="${u.emergenciaNome||''}" style="font-size:13px;padding:8px 10px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Emergência (tel)</label>
+        <input class="form-control" id="editEmergTel" value="${u.emergenciaTel||''}" style="font-size:13px;padding:8px 10px">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Doença / condição de saúde</label>
+      <input class="form-control" id="editDoenca" value="${u.doenca||''}" style="font-size:13px;padding:8px 10px">
+    </div>
+    <hr>
+    <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 8px">Dados fixos</div>
+    <table style="width:100%;font-size:12px">
+      <tr><td style="color:var(--tx2);padding:4px 0">CPF</td><td style="text-align:right;font-weight:500">${u.cpf||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:4px 0">Nascimento</td><td style="text-align:right;font-weight:500">${u.dataNascimento||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:4px 0">Como conheceu</td><td style="text-align:right;font-weight:500">${u.comoConheceu||'—'}</td></tr>
+      <tr><td style="color:var(--tx2);padding:4px 0">Status</td><td style="text-align:right"><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></td></tr>
     </table>
     <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn-sm ok" style="flex:2;justify-content:center" onclick="window.salvarMembro('${uid}')">
+        <i class="ti ti-device-floppy"></i> Salvar alterações
+      </button>
       <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.inativarMembro('${uid}')">
         <i class="ti ti-user-off"></i> ${u.status==='Ativo'?'Inativar':'Reativar'}
       </button>
     </div>`;
   document.getElementById('modalMembro').classList.add('open');
+};
+
+window.salvarMembro = async function(uid){
+  const u = allUsers.find(x=>x.uid===uid);
+  const dados = {
+    nome:             document.getElementById('editNome').value.trim()     || u.nome,
+    nomeApresentacao: document.getElementById('editNomeApres').value.trim(),
+    telefone:         document.getElementById('editTelefone').value.trim(),
+    nivel:            document.getElementById('editNivel').value,
+    emergenciaNome:   document.getElementById('editEmergNome').value.trim(),
+    emergenciaTel:    document.getElementById('editEmergTel').value.trim(),
+    doenca:           document.getElementById('editDoenca').value.trim() || 'Nenhuma',
+  };
+  loading(true);
+  await updateDoc(doc(db,'usuarios',uid), dados);
+  Object.assign(u, dados);
+  closeModal('modalMembro');
+  renderUsuariosGerente();
+  loading(false);
+  showToast('✅ Dados do membro atualizados!');
 };
 
 window.inativarMembro = async function(uid){
