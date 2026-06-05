@@ -85,6 +85,9 @@ html,body{height:100%;background:var(--bg)}
 .btn-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:11px;padding:5px 10px;border-radius:7px;cursor:pointer}
 
 /* ── CONTENT ── */
+.screen.active{display:flex;flex-direction:column}
+#screenMain{flex-direction:column}
+#memberArea,#gerenteArea{flex:1;flex-direction:column;overflow:hidden}
 .content{flex:1;overflow-y:auto;padding:16px}
 .page{display:none}
 .page.active{display:block}
@@ -339,7 +342,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
   </div>
 
   <!-- ÁREA MEMBRO -->
-  <div id="memberArea" style="display:none;flex:1;flex-direction:column">
+  <div id="memberArea" style="display:none;flex:1;flex-direction:column;min-height:0">
     <div class="content" id="memberContent">
 
       <!-- HOME MEMBRO -->
@@ -451,7 +454,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
   </div>
 
   <!-- ÁREA GERENTE / COORDENADOR -->
-  <div id="gerenteArea" style="display:none;flex:1;flex-direction:column">
+  <div id="gerenteArea" style="display:none;flex:1;flex-direction:column;min-height:0">
     <div class="content" id="gerenteContent">
 
       <!-- HOME GERENTE -->
@@ -603,21 +606,18 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div id="usuariosGerenteList"></div>
       </div>
 
-    </div>
       <!-- DIARISTAS -->
       <div class="page" id="pageGerenteDiaristas">
         <div class="sec-header">
           <div class="sec-title">Diaristas & Confirmações</div>
         </div>
-        <!-- seletor de jogo -->
         <div class="form-group" style="margin-bottom:10px">
           <label class="form-label">Selecionar jogo do dia</label>
           <select class="form-control" id="diaristasJogoSel" onchange="carregarDiaristas()" style="font-size:13px">
             <option value="">Selecione um jogo...</option>
           </select>
         </div>
-        <!-- abas -->
-        <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px" id="diaristaTabs">
+        <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px">
           <button id="tabDiaristaMembros" onclick="switchDiaristaTab('membros')"
             style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">
             Membros inscritos
@@ -631,7 +631,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div id="diaristaSolicPanel" style="display:none"></div>
       </div>
 
-    </div>
+    </div><!-- end gerenteContent -->
     <div class="bottomnav" id="gerenteNav">
       <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome',this)"><i class="ti ti-home"></i>Início</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteInscricoes',this)"><i class="ti ti-clipboard-check"></i>Inscrições</button>
@@ -2017,57 +2017,59 @@ window.carregarDiaristas = async function(){
   if(!jogoId) return;
   _diaristasJogoAtual = allJogos.find(j=>j.id===jogoId);
   loading(true);
+  try{
+    const [inscSnap, diarSnap] = await Promise.all([
+      getDocs(query(collection(db,'inscricoes'), where('jogoId','==',jogoId))),
+      getDocs(query(collection(db,'diaristas'),  where('jogoId','==',jogoId)))
+    ]);
+    const inscritos = inscSnap.docs.map(d=>({id:d.id,...d.data()})).filter(i=>i.status==='Aprovado');
+    const diaristas = diarSnap.docs.map(d=>({id:d.id,...d.data()}));
+    loading(false);
 
-  // queries simples por jogoId apenas (sem compound index)
-  const [inscSnap, diarSnap] = await Promise.all([
-    getDocs(query(collection(db,'inscricoes'), where('jogoId','==',jogoId))),
-    getDocs(query(collection(db,'diaristas'),  where('jogoId','==',jogoId)))
-  ]);
-  const inscritos = inscSnap.docs.map(d=>({id:d.id,...d.data()})).filter(i=>i.status==='Aprovado');
-  const diaristas = diarSnap.docs.map(d=>({id:d.id,...d.data()}));
-  loading(false);
+    const panelM = document.getElementById('diaristaMembrosPanel');
+    if(!inscritos.length){
+      panelM.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro aprovado neste jogo.</p></div>';
+    } else {
+      panelM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+
+      inscritos.map(i=>{
+        const conf = diaristas.find(d=>d.usuarioId===i.usuarioId && d.tipo==='membro');
+        const confirmado = conf?.confirmado;
+        return `<div class="card">
+          <div class="card-row">
+            <div><div class="card-title">${i.usuarioNome}</div></div>
+            <span class="badge ${confirmado===true?'bg':confirmado===false?'br':'ba'}">${confirmado===true?'Confirmado':confirmado===false?'Desistiu':'Pendente'}</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn-sm ok" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',true)"><i class="ti ti-check"></i> Confirmar</button>
+            <button class="btn-sm no"  style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',false)"><i class="ti ti-x"></i> Desistência</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
 
-  // painel membros inscritos + confirmação
-  const panelM = document.getElementById('diaristaMembrosPanel');
-  if(!inscritos.length){
-    panelM.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro inscrito neste jogo.</p></div>';
-  } else {
-    panelM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+
-    inscritos.map(i=>{
-      const conf = diaristas.find(d=>d.usuarioId===i.usuarioId && d.tipo==='membro');
-      const confirmado = conf?.confirmado;
-      return `<div class="card">
+    const pendDiar = diaristas.filter(d=>d.tipo==='diarista');
+    const panelS   = document.getElementById('diaristaSolicPanel');
+    if(!pendDiar.length){
+      panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação de diarista.</p></div>';
+    } else {
+      panelS.innerHTML=pendDiar.map(d=>`<div class="card">
         <div class="card-row">
-          <div><div class="card-title">${i.usuarioNome}</div></div>
-          <span class="badge ${confirmado===true?'bg':confirmado===false?'br':'ba'}">${confirmado===true?'Confirmado':confirmado===false?'Desistiu':'Pendente'}</span>
+          <div>
+            <div class="card-title">${d.usuarioNome}</div>
+            <div class="card-sub">Taxa: R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</div>
+          </div>
+          <span class="badge ${d.status==='Aprovado'?'bg':d.status==='Rejeitado'?'br':'ba'}">${d.status}</span>
         </div>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="btn-sm ok" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',true)"><i class="ti ti-check"></i> Confirmar</button>
-          <button class="btn-sm no"  style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',false)"><i class="ti ti-x"></i> Desistência</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // painel solicitações de diaristas
-  const pendDiar = diaristas.filter(d=>d.tipo==='diarista');
-  const panelS   = document.getElementById('diaristaSolicPanel');
-  if(!pendDiar.length){
-    panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação de diarista para este jogo.</p></div>';
-  } else {
-    panelS.innerHTML=pendDiar.map(d=>`<div class="card">
-      <div class="card-row">
-        <div>
-          <div class="card-title">${d.usuarioNome}</div>
-          <div class="card-sub">Taxa: R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</div>
-        </div>
-        <span class="badge ${d.status==='Aprovado'?'bg':d.status==='Rejeitado'?'br':'ba'}">${d.status}</span>
-      </div>
-      ${d.status==='Pendente'?`<div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn-sm ok" onclick="window.aprovarDiarista('${d.id}','${jogoId}')"><i class="ti ti-check"></i> Aprovar</button>
-        <button class="btn-sm no" onclick="window.rejeitarDiarista('${d.id}','${jogoId}')"><i class="ti ti-x"></i> Rejeitar</button>
-      </div>`:''}
-    </div>`).join('');
+        ${d.status==='Pendente'?`<div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn-sm ok" onclick="window.aprovarDiarista('${d.id}','${jogoId}')"><i class="ti ti-check"></i> Aprovar</button>
+          <button class="btn-sm no" onclick="window.rejeitarDiarista('${d.id}','${jogoId}')"><i class="ti ti-x"></i> Rejeitar</button>
+        </div>`:''}
+      </div>`).join('');
+    }
+  } catch(e){
+    loading(false);
+    document.getElementById('diaristaMembrosPanel').innerHTML=
+      `<div class="empty"><i class="ti ti-alert-circle"></i><p>Erro ao carregar: ${e.message}</p></div>`;
   }
 };
 
@@ -2112,15 +2114,15 @@ window.carregarInfoDiaMembro = async function(){
   if(!jogoId){ document.getElementById('diaristaMemberPanel').innerHTML=''; return; }
   _diaristasJogoAtualMembro = allJogos.find(j=>j.id===jogoId);
   loading(true);
-  // query simples — filtra por jogoId só, depois filtra currentUID no cliente
-  const [inscSnap,diarSnap] = await Promise.all([
-    getDocs(query(collection(db,'inscricoes'), where('jogoId','==',jogoId))),
-    getDocs(query(collection(db,'diaristas'),  where('jogoId','==',jogoId)))
-  ]);
-  const minhaInsc   = inscSnap.docs.map(d=>d.data()).find(i=>i.usuarioId===currentUID) || null;
-  const meuDoc      = diarSnap.docs.find(d=>d.data().usuarioId===currentUID);
-  const meuRegistro = meuDoc ? {id:meuDoc.id,...meuDoc.data()} : null;
-  loading(false);
+  try{
+    const [inscSnap,diarSnap] = await Promise.all([
+      getDocs(query(collection(db,'inscricoes'), where('jogoId','==',jogoId))),
+      getDocs(query(collection(db,'diaristas'),  where('jogoId','==',jogoId)))
+    ]);
+    const minhaInsc   = inscSnap.docs.map(d=>d.data()).find(i=>i.usuarioId===currentUID) || null;
+    const meuDoc      = diarSnap.docs.find(d=>d.data().usuarioId===currentUID);
+    const meuRegistro = meuDoc ? {id:meuDoc.id,...meuDoc.data()} : null;
+    loading(false);
 
   const panel = document.getElementById('diaristaMemberPanel');
   const jogo  = _diaristasJogoAtualMembro;
@@ -2177,6 +2179,11 @@ window.carregarInfoDiaMembro = async function(){
     }
   }
   panel.innerHTML=html;
+  } catch(e){
+    loading(false);
+    document.getElementById('diaristaMemberPanel').innerHTML=
+      `<div class="empty"><i class="ti ti-alert-circle"></i><p>Erro ao carregar: ${e.message}</p></div>`;
+  }
 };
 
 let _taxaSelecionada = 15;
