@@ -227,14 +227,19 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
 
       <div class="page" id="pageMemberDiaristas">
         <div class="sec-header"><div class="sec-title">Diaristas & Confirmações</div></div>
-        <div class="form-group" style="margin-bottom:10px">
-          <label class="form-label">Selecionar jogo</label>
-          <!-- FIX 2: filtrado por nível no JS -->
-          <select class="form-control" id="diaristasJogoSelMembro" onchange="carregarInfoDiaMembro()" style="font-size:13px">
+        <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label">Jogo</label>
+          <select class="form-control" id="diaristasJogoSelMembro" onchange="atualizarDatasDiaristasMembro()" style="font-size:13px">
             <option value="">Selecione um jogo...</option>
           </select>
         </div>
-        <div id="diaristaMemberPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo para ver as opções</p></div></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Data</label>
+          <select class="form-control" id="diaristasDataSelMembro" onchange="carregarInfoDiaMembro()" style="font-size:13px" disabled>
+            <option value="">Selecione uma data...</option>
+          </select>
+        </div>
+        <div id="diaristaMemberPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div></div>
       </div>
 
       <div class="page" id="pageMemberDuplas">
@@ -843,44 +848,70 @@ window.confirmarPresencaData=async function(jogoId,data,confirmado){
   loading(false);
 };
 
-// ══ FIX 2: DIARISTAS MEMBRO — filtrado por nível ══
+// ══ DIARISTAS MEMBRO — filtrado por nível + datas ══
 window.initDiaristasMembro=function(){
   const sel=document.getElementById('diaristasJogoSelMembro');
+  const selData=document.getElementById('diaristasDataSelMembro');
   const periodo=periodoVigente();
-  // FIX 2: só mostra jogos do nível do usuário logado
   const jogos=allJogos.filter(j=>j.status==='Aberto'&&j.nivel===currentUser.nivel&&(!periodo||j.mesAno===periodo.nome));
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
     jogos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
-  document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo</p></div>';
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div>';
+};
+
+window.atualizarDatasDiaristasMembro=function(){
+  const jogoId=document.getElementById('diaristasJogoSelMembro').value;
+  const selData=document.getElementById('diaristasDataSelMembro');
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione uma data</p></div>';
+  if(!jogoId) return;
+  const jogo=allJogos.find(j=>j.id===jogoId);
+  const periodo=allPeriodos.find(p=>p.nome===jogo.mesAno);
+  if(!periodo){selData.innerHTML='<option value="">Período não encontrado</option>';return;}
+  const datas=calcularDatasJogo(jogo,periodo);
+  if(!datas.length){selData.innerHTML='<option value="">Nenhuma data no período</option>';return;}
+  const hoje=dataParaKey(new Date());
+  selData.innerHTML='<option value="">Selecione uma data...</option>'+
+    datas.map(d=>{const key=dataParaKey(d);return`<option value="${key}">${formatDataBR(d)}${key===hoje?' (hoje)':''}</option>`;}).join('');
+  selData.disabled=false;
+  if(datas.find(d=>dataParaKey(d)===hoje)){selData.value=hoje;carregarInfoDiaMembro();}
 };
 
 window.carregarInfoDiaMembro=async function(){
   const jogoId=document.getElementById('diaristasJogoSelMembro').value;
-  if(!jogoId){document.getElementById('diaristaMemberPanel').innerHTML='';return;}
+  const dataKey=document.getElementById('diaristasDataSelMembro').value;
+  if(!jogoId||!dataKey){document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div>';return;}
   _diaristasJogoAtualMembro=allJogos.find(j=>j.id===jogoId);
   loading(true);
   try{
-    const[inscSnap,diarSnap]=await Promise.all([
+    const[inscSnap,confSnap,diarSnap]=await Promise.all([
       getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId))),
+      getDocs(query(collection(db,'confirmacoes'),where('jogoId','==',jogoId),where('data','==',dataKey))),
       getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)))
     ]);
     const minhaInsc=inscSnap.docs.map(d=>d.data()).find(i=>i.usuarioId===currentUID)||null;
-    const meuDoc=diarSnap.docs.find(d=>d.data().usuarioId===currentUID);
-    const meuRegistro=meuDoc?{id:meuDoc.id,...meuDoc.data()}:null;
+    const minhaConf=confSnap.docs.find(d=>d.data().usuarioId===currentUID);
+    const meuConfObj=minhaConf?{id:minhaConf.id,...minhaConf.data()}:null;
+    const meuDiarista=diarSnap.docs.find(d=>d.data().usuarioId===currentUID);
+    const meuRegistro=meuDiarista?{id:meuDiarista.id,...meuDiarista.data()}:null;
     loading(false);
     const panel=document.getElementById('diaristaMemberPanel');
     const jogo=_diaristasJogoAtualMembro;
-    let html=`<div class="card" style="background:var(--sur2);margin-bottom:10px"><div class="card-title">${jogo.nome}</div><div class="card-sub">${jogo.dia}${jogo.mesAno?' · '+jogo.mesAno:''} · ${jogo.nivel}</div><div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</span></div></div>`;
+    const dataObj=new Date(dataKey+'T12:00:00');
+    let html=`<div class="card" style="background:var(--sur2);margin-bottom:10px"><div class="card-title">${jogo.nome}</div><div class="card-sub">${formatDataBR(dataObj)} · ${jogo.nivel}</div><div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</span></div></div>`;
     if(minhaInsc){
-      const conf=meuRegistro?.confirmado;
-      html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Confirmar presença</div>
+      const conf=meuConfObj?.confirmado;
+      html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Confirmar presença — ${formatDataBR(dataObj)}</div>
       <div style="display:flex;gap:8px;margin-bottom:14px">
-        <button class="btn-sm ok" style="flex:1;justify-content:center" onclick="window.membroConfirmaPresenca('${jogoId}',true)"><i class="ti ti-check"></i> Vou comparecer</button>
-        <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.membroConfirmaPresenca('${jogoId}',false)"><i class="ti ti-x"></i> Não vou</button>
+        <button class="btn-sm ok" style="flex:1;justify-content:center" onclick="window.confirmarPresencaData('${jogoId}','${dataKey}',true)"><i class="ti ti-check"></i> Vou comparecer</button>
+        <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.confirmarPresencaData('${jogoId}','${dataKey}',false)"><i class="ti ti-x"></i> Não vou</button>
       </div>
       <div class="card" style="background:${conf===true?'#E6F7EF':conf===false?'#FEEEEE':'var(--sur2)'}">
         <div style="font-size:13px;font-weight:500;color:${conf===true?'#0F6E56':conf===false?'#A32D2D':'var(--tx2)'}">
-          ${conf===true?'✅ Você confirmou presença':conf===false?'❌ Você registrou desistência':'⏳ Confirmação pendente'}
+          ${conf===true?'✅ Você confirmou presença para esta data':conf===false?'❌ Você registrou desistência para esta data':'⏳ Você ainda não confirmou para esta data'}
         </div>
       </div>`;
     }else{
