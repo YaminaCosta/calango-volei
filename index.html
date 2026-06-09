@@ -207,16 +207,22 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div class="sec-header"><div class="sec-title">Participantes do dia</div></div>
         <div class="card" style="background:#E8F3FE;border-color:#B5D4F4;margin-bottom:12px">
           <div style="font-size:12px;color:#185FA5;line-height:1.5">
-            Veja quem está inscrito em cada jogo e se confirmou presença. O gerente abre vagas de diaristas quando há desistências.
+            Selecione o jogo e a data para ver quem está inscrito e se confirmou presença. Membros inscritos podem confirmar ou registrar desistência por data.
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label class="form-label">Selecionar jogo do dia</label>
-          <select class="form-control" id="participantesJogoSel" onchange="carregarParticipantesDia()" style="font-size:13px">
+        <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label">Jogo</label>
+          <select class="form-control" id="participantesJogoSel" onchange="atualizarDatasParticipantes()" style="font-size:13px">
             <option value="">Selecione um jogo...</option>
           </select>
         </div>
-        <div id="participantesDiaPanel"><div class="empty"><i class="ti ti-users"></i><p>Selecione um jogo para ver a lista do dia</p></div></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Data</label>
+          <select class="form-control" id="participantesDataSel" onchange="carregarParticipantesDia()" style="font-size:13px" disabled>
+            <option value="">Selecione uma data...</option>
+          </select>
+        </div>
+        <div id="participantesDiaPanel"><div class="empty"><i class="ti ti-users"></i><p>Selecione o jogo e a data para ver a lista</p></div></div>
       </div>
 
       <div class="page" id="pageMemberDiaristas">
@@ -286,15 +292,17 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <div class="page" id="pageGerenteNivel"><div class="sec-header"><div class="sec-title">Solicitações de nível</div></div><div id="nivelSolicList"></div></div>
       <div class="page" id="pageGerenteDiaristas">
         <div class="sec-header"><div class="sec-title">Diaristas & Confirmações</div></div>
-        <div class="form-group" style="margin-bottom:10px"><label class="form-label">Selecionar jogo do dia</label>
-          <!-- FIX 1 Gerente: label inclui nivel -->
-          <select class="form-control" id="diaristasJogoSel" onchange="carregarDiaristas()" style="font-size:13px"><option value="">Selecione um jogo...</option></select>
+        <div class="form-group" style="margin-bottom:8px"><label class="form-label">Jogo</label>
+          <select class="form-control" id="diaristasJogoSel" onchange="atualizarDatasGerente()" style="font-size:13px"><option value="">Selecione um jogo...</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:10px"><label class="form-label">Data</label>
+          <select class="form-control" id="diaristasDataSel" onchange="carregarDiaristas()" style="font-size:13px" disabled><option value="">Selecione uma data...</option></select>
         </div>
         <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px">
           <button id="tabDiaristaMembros" onclick="switchDiaristaTab('membros')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">Membros inscritos</button>
           <button id="tabDiaristaReqs" onclick="switchDiaristaTab('reqs')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">Solicit. diaristas</button>
         </div>
-        <div id="diaristaMembrosPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo para ver os inscritos</p></div></div>
+        <div id="diaristaMembrosPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div></div>
         <div id="diaristaSolicPanel" style="display:none"></div>
       </div>
       <div class="page" id="pageGerenteRelatorio">
@@ -657,53 +665,130 @@ window.memberPage=function(pageId,btn){
   btn.classList.add('active');
 };
 
-// ══ FIX 1: PARTICIPANTES DO DIA ══
+// ══ PARTICIPANTES DO DIA — com datas calculadas por período ══
+
+// Calcula todas as ocorrências de um dia da semana dentro do período
+function calcularDatasJogo(jogo, periodo){
+  if(!periodo||!jogo.dia) return [];
+  const diasSemana={
+    'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,
+    'Sexta':5,'Sábado':6,'Domingo':0
+  };
+  const diaSemana=diasSemana[jogo.dia];
+  if(diaSemana===undefined) return [];
+  const ini=new Date(periodo.dataInicio+'T00:00:00');
+  const fim=new Date(periodo.dataFim+'T23:59:59');
+  const datas=[];
+  // avança para o primeiro dia da semana dentro do período
+  const cur=new Date(ini);
+  const diff=(diaSemana-cur.getDay()+7)%7;
+  cur.setDate(cur.getDate()+diff);
+  while(cur<=fim){
+    datas.push(new Date(cur));
+    cur.setDate(cur.getDate()+7);
+  }
+  return datas;
+}
+
+function formatDataBR(d){
+  return d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+function dataParaKey(d){
+  // YYYY-MM-DD para usar como chave no Firestore
+  return d.toISOString().slice(0,10);
+}
+
 window.initParticipantesMembro=function(){
   const sel=document.getElementById('participantesJogoSel');
+  const selData=document.getElementById('participantesDataSel');
   const periodo=periodoVigente();
   const jogos=allJogos.filter(j=>j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome));
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
     jogos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
-  document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione um jogo para ver a lista do dia</p></div>';
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione o jogo e a data</p></div>';
+};
+
+// Preenche o select de datas quando o jogo é escolhido
+window.atualizarDatasParticipantes=function(){
+  const jogoId=document.getElementById('participantesJogoSel').value;
+  const selData=document.getElementById('participantesDataSel');
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione uma data para ver a lista</p></div>';
+  if(!jogoId) return;
+  const jogo=allJogos.find(j=>j.id===jogoId);
+  const periodo=allPeriodos.find(p=>p.nome===jogo.mesAno) || periodoVigente();
+  if(!periodo){selData.innerHTML='<option value="">Nenhum período vinculado</option>';return;}
+  const datas=calcularDatasJogo(jogo,periodo);
+  if(!datas.length){selData.innerHTML='<option value="">Nenhuma data no período</option>';return;}
+  // ordena e marca hoje
+  const hoje=dataParaKey(new Date());
+  selData.innerHTML='<option value="">Selecione uma data...</option>'+
+    datas.map(d=>{
+      const key=dataParaKey(d);
+      const label=formatDataBR(d)+(key===hoje?' (hoje)':'');
+      return`<option value="${key}">${label}</option>`;
+    }).join('');
+  selData.disabled=false;
+  // pré-seleciona hoje se estiver na lista
+  if(datas.find(d=>dataParaKey(d)===hoje)){
+    selData.value=hoje;
+    carregarParticipantesDia();
+  }
 };
 
 window.carregarParticipantesDia=async function(){
   const jogoId=document.getElementById('participantesJogoSel').value;
-  if(!jogoId)return;
+  const dataKey=document.getElementById('participantesDataSel').value;
+  if(!jogoId||!dataKey) return;
   const jogo=allJogos.find(j=>j.id===jogoId);
   loading(true);
   try{
+    // busca inscrições do jogo + confirmações para essa data específica
     const[inscSnap,diarSnap]=await Promise.all([
       getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId))),
-      getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)))
+      getDocs(query(collection(db,'confirmacoes'),where('jogoId','==',jogoId),where('data','==',dataKey)))
     ]);
     const inscritos=inscSnap.docs.map(d=>({id:d.id,...d.data()})).filter(i=>i.status==='Aprovado');
-    const confirmacoes=diarSnap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.tipo==='membro');
-    const diaristasAprovados=diarSnap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.tipo==='diarista'&&d.status==='Aprovado');
+    const confirmacoes=diarSnap.docs.map(d=>({id:d.id,...d.data()}));
+    // diaristas aprovados para esse jogo (sem filtro de data — aprovação é para o período)
+    const diarSnap2=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)));
+    const diaristasAprovados=diarSnap2.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.tipo==='diarista'&&d.status==='Aprovado');
     loading(false);
 
+    // stats
+    const confirmados=confirmacoes.filter(c=>c.confirmado===true).length;
+    const desistencias=confirmacoes.filter(c=>c.confirmado===false).length;
+    const pendentes=inscritos.length-confirmacoes.length;
+
     const panel=document.getElementById('participantesDiaPanel');
+    // data formatada
+    const dataObj=new Date(dataKey+'T12:00:00');
     let html=`<div class="card" style="background:var(--sur2);margin-bottom:12px">
       <div class="card-title">${jogo.nome}</div>
-      <div class="card-sub">${jogo.dia}${jogo.mesAno?' · '+jogo.mesAno:''} · ${jogo.nivel} · ${jogo.tipo}</div>
-      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-        <span class="badge bb">${inscritos.length} inscritos</span>
-        ${jogo.vagasDiaristas==='sim'?'<span class="badge bg"><i class="ti ti-run" style="font-size:10px"></i> Vagas de diarista abertas</span>':'<span class="badge bgy">Diaristas fechados</span>'}
+      <div class="card-sub">${formatDataBR(dataObj)} · ${jogo.nivel} · ${jogo.tipo}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">
+        <div style="background:#E6F7EF;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#0F6E56">${confirmados}</div><div style="font-size:10px;color:#0F6E56">Confirmados</div></div>
+        <div style="background:#FEEEEE;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#A32D2D">${desistencias}</div><div style="font-size:10px;color:#A32D2D">Desistências</div></div>
+        <div style="background:#F0EEEA;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#666">${pendentes}</div><div style="font-size:10px;color:#666">Pendentes</div></div>
       </div>
     </div>`;
 
-    // membros inscritos
-    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Membros inscritos (${inscritos.length})</div>`;
+    // lista de inscritos
+    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Inscritos (${inscritos.length})</div>`;
     if(!inscritos.length){
       html+='<div class="empty" style="padding:16px"><i class="ti ti-calendar-x"></i><p>Nenhum membro inscrito</p></div>';
     }else{
       html+='<div class="card" style="padding:0;overflow:hidden">';
       html+=inscritos.map(i=>{
         const conf=confirmacoes.find(c=>c.usuarioId===i.usuarioId);
-        const status=conf?.confirmado===true?'confirmado':conf?.confirmado===false?'desistiu':'pendente';
-        const label=status==='confirmado'?'✅ Confirmado':status==='desistiu'?'❌ Desistiu':'⏳ Pendente';
-        const cls=status==='confirmado'?'part-confirmado':status==='desistiu'?'part-desistiu':'part-pendente';
-        return `<div class="part-item"><span class="part-nome">${i.usuarioNome}</span><span class="part-status ${cls}">${label}</span></div>`;
+        const st=conf?.confirmado===true?'confirmado':conf?.confirmado===false?'desistiu':'pendente';
+        const label=st==='confirmado'?'✅ Confirmado':st==='desistiu'?'❌ Desistiu':'⏳ Pendente';
+        const cls=st==='confirmado'?'part-confirmado':st==='desistiu'?'part-desistiu':'part-pendente';
+        return`<div class="part-item"><span class="part-nome">${i.usuarioNome}</span><span class="part-status ${cls}">${label}</span></div>`;
       }).join('');
       html+='</div>';
     }
@@ -712,23 +797,23 @@ window.carregarParticipantesDia=async function(){
     if(diaristasAprovados.length){
       html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Diaristas aprovados (${diaristasAprovados.length})</div>`;
       html+='<div class="card" style="padding:0;overflow:hidden">';
-      html+=diaristasAprovados.map(d=>`<div class="part-item"><span class="part-nome">${d.usuarioNome}</span><span class="part-status" style="background:#FFF3DC;color:#854F0B">Diarista</span></div>`).join('');
+      html+=diaristasAprovados.map(d=>`<div class="part-item"><span class="part-nome">${d.usuarioNome}</span><span class="part-status" style="background:#FFF3DC;color:#854F0B">Diarista · R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</span></div>`).join('');
       html+='</div>';
     }
 
-    // se o usuário logado está inscrito — mostra botão de confirmação
+    // botão de confirmação do membro logado (só se inscrito)
     const minhaInsc=inscritos.find(i=>i.usuarioId===currentUID);
     if(minhaInsc){
-      const minhConf=confirmacoes.find(c=>c.usuarioId===currentUID);
-      const conf=minhConf?.confirmado;
-      html+=`<div style="font-size:13px;font-weight:600;color:var(--tx);margin:14px 0 8px">Minha confirmação</div>
+      const minhaConf=confirmacoes.find(c=>c.usuarioId===currentUID);
+      const conf=minhaConf?.confirmado;
+      html+=`<div style="font-size:13px;font-weight:600;color:var(--tx);margin:14px 0 8px">Minha confirmação — ${formatDataBR(dataObj)}</div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <button class="btn-sm ok" style="flex:1;justify-content:center" onclick="window.membroConfirmaPresenca('${jogoId}',true)"><i class="ti ti-check"></i> Vou comparecer</button>
-        <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.membroConfirmaPresenca('${jogoId}',false)"><i class="ti ti-x"></i> Não vou</button>
+        <button class="btn-sm ok" style="flex:1;justify-content:center" onclick="window.confirmarPresencaData('${jogoId}','${dataKey}',true)"><i class="ti ti-check"></i> Vou comparecer</button>
+        <button class="btn-sm no" style="flex:1;justify-content:center" onclick="window.confirmarPresencaData('${jogoId}','${dataKey}',false)"><i class="ti ti-x"></i> Não vou</button>
       </div>
       <div class="card" style="background:${conf===true?'#E6F7EF':conf===false?'#FEEEEE':'var(--sur2)'}">
         <div style="font-size:13px;font-weight:500;color:${conf===true?'#0F6E56':conf===false?'#A32D2D':'var(--tx2)'}">
-          ${conf===true?'✅ Você confirmou presença':conf===false?'❌ Você registrou desistência':'⏳ Aguardando sua confirmação'}
+          ${conf===true?'✅ Você confirmou presença para esta data':conf===false?'❌ Você registrou desistência para esta data':'⏳ Você ainda não confirmou presença para esta data'}
         </div>
       </div>`;
     }
@@ -738,6 +823,24 @@ window.carregarParticipantesDia=async function(){
     loading(false);
     document.getElementById('participantesDiaPanel').innerHTML=`<div class="empty"><i class="ti ti-alert-circle"></i><p>Erro: ${e.message}</p></div>`;
   }
+};
+
+// Confirmação de presença por data específica (nova coleção: confirmacoes)
+window.confirmarPresencaData=async function(jogoId,data,confirmado){
+  loading(true);
+  const snap=await getDocs(query(collection(db,'confirmacoes'),
+    where('jogoId','==',jogoId),where('data','==',data),where('usuarioId','==',currentUID)));
+  if(snap.empty){
+    await addDoc(collection(db,'confirmacoes'),{
+      jogoId,data,usuarioId:currentUID,usuarioNome:currentUser.nome,
+      confirmado,criadoEm:serverTimestamp()
+    });
+  }else{
+    await updateDoc(doc(db,'confirmacoes',snap.docs[0].id),{confirmado});
+  }
+  showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada.');
+  await carregarParticipantesDia();
+  loading(false);
 };
 
 // ══ FIX 2: DIARISTAS MEMBRO — filtrado por nível ══
@@ -798,17 +901,9 @@ window.carregarInfoDiaMembro=async function(){
 };
 
 window.membroConfirmaPresenca=async function(jogoId,confirmado){
-  loading(true);
-  const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)));
-  const ex=snap.docs.find(d=>d.data().usuarioId===currentUID&&d.data().tipo==='membro');
-  if(!ex)await addDoc(collection(db,'diaristas'),{jogoId,usuarioId:currentUID,usuarioNome:currentUser.nome,tipo:'membro',confirmado,criadoEm:serverTimestamp()});
-  else await updateDoc(doc(db,'diaristas',ex.id),{confirmado});
-  showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada.');
-  // atualiza ambas as telas se abertas
-  const selP=document.getElementById('participantesJogoSel');
-  if(selP&&selP.value===jogoId)await carregarParticipantesDia();
-  else await carregarInfoDiaMembro();
-  loading(false);
+  // usado na aba Diaristas (sem data específica — usa data de hoje)
+  const hoje=dataParaKey(new Date());
+  await confirmarPresencaData(jogoId,hoje,confirmado);
 };
 window.solicitarDiaria=async function(jogoId,taxa){
   loading(true);
@@ -991,33 +1086,131 @@ window.gerentePage=function(pageId,btn){
   if(pageId==='pageGerenteDiaristas')initDiaristasGerente();
 };
 
-// DIARISTAS GERENTE
+// DIARISTAS GERENTE — date-aware
 function initDiaristasGerente(){
   const sel=document.getElementById('diaristasJogoSel');
   const jogosAbertos=allJogos.filter(j=>j.status==='Aberto');
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
     jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+  const selData=document.getElementById('diaristasDataSel');
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('diaristaMembrosPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div>';
 }
+
+window.atualizarDatasGerente=function(){
+  const jogoId=document.getElementById('diaristasJogoSel').value;
+  const selData=document.getElementById('diaristasDataSel');
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('diaristaMembrosPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione uma data</p></div>';
+  if(!jogoId) return;
+  const jogo=allJogos.find(j=>j.id===jogoId);
+  const periodo=allPeriodos.find(p=>p.nome===jogo.mesAno);
+  if(!periodo){selData.innerHTML='<option value="">Nenhum período vinculado</option>';return;}
+  const datas=calcularDatasJogo(jogo,periodo);
+  if(!datas.length){selData.innerHTML='<option value="">Nenhuma data no período</option>';return;}
+  const hoje=dataParaKey(new Date());
+  selData.innerHTML='<option value="">Selecione uma data...</option>'+
+    datas.map(d=>{
+      const key=dataParaKey(d);
+      const label=formatDataBR(d)+(key===hoje?' (hoje)':'');
+      return`<option value="${key}">${label}</option>`;
+    }).join('');
+  selData.disabled=false;
+  // pré-seleciona hoje
+  if(datas.find(d=>dataParaKey(d)===hoje)){selData.value=hoje;carregarDiaristas();}
+};
+
 window.switchDiaristaTab=function(tab){document.getElementById('tabDiaristaMembros').style.background=tab==='membros'?'#fff':'transparent';document.getElementById('tabDiaristaMembros').style.color=tab==='membros'?'var(--tx)':'var(--tx2)';document.getElementById('tabDiaristaReqs').style.background=tab==='reqs'?'#fff':'transparent';document.getElementById('tabDiaristaReqs').style.color=tab==='reqs'?'var(--tx)':'var(--tx2)';document.getElementById('diaristaMembrosPanel').style.display=tab==='membros'?'block':'none';document.getElementById('diaristaSolicPanel').style.display=tab==='reqs'?'block':'none';};
+
 window.carregarDiaristas=async function(){
-  const jogoId=document.getElementById('diaristasJogoSel').value;if(!jogoId)return;
+  const jogoId=document.getElementById('diaristasJogoSel').value;
+  const dataKey=document.getElementById('diaristasDataSel').value;
+  if(!jogoId||!dataKey) return;
   _diaristasJogoAtual=allJogos.find(j=>j.id===jogoId);
   loading(true);
   try{
-    const[inscSnap,diarSnap]=await Promise.all([getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId))),getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)))]);
+    const[inscSnap,confSnap,diarSnap]=await Promise.all([
+      getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId))),
+      getDocs(query(collection(db,'confirmacoes'),where('jogoId','==',jogoId),where('data','==',dataKey))),
+      getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)))
+    ]);
     const inscritos=inscSnap.docs.map(d=>({id:d.id,...d.data()})).filter(i=>i.status==='Aprovado');
-    const diaristas=diarSnap.docs.map(d=>({id:d.id,...d.data()}));loading(false);
-    const jogo=_diaristasJogoAtual;const vagasAbertas=jogo.vagasDiaristas==='sim';
-    const headerHtml=`<div class="card" style="background:${vagasAbertas?'#E6F7EF':'#F0EEEA'};border-color:${vagasAbertas?'#9FE1CB':'var(--bd)'};margin-bottom:12px"><div class="card-row"><div><div style="font-size:13px;font-weight:600;color:${vagasAbertas?'#0F6E56':'var(--tx2)'}">${vagasAbertas?'✅ Vagas de diaristas abertas':'🔒 Vagas de diaristas fechadas'}</div><div style="font-size:11px;color:var(--tx2);margin-top:2px">Taxa: R$ ${Number(jogo.taxaDiaria||0).toFixed(2).replace('.',',')}</div></div><button class="btn-sm ${vagasAbertas?'no':'ok'}" onclick="window.toggleDiaristas('${jogoId}');setTimeout(()=>carregarDiaristas(),700)"><i class="ti ti-run"></i> ${vagasAbertas?'Fechar':'Abrir'} vagas</button></div></div>`;
+    const confirmacoes=confSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const diaristas=diarSnap.docs.map(d=>({id:d.id,...d.data()}));
+    loading(false);
+
+    const jogo=_diaristasJogoAtual;
+    const vagasAbertas=jogo.vagasDiaristas==='sim';
+    const dataObj=new Date(dataKey+'T12:00:00');
+    const confirmados=confirmacoes.filter(c=>c.confirmado===true).length;
+    const desistencias=confirmacoes.filter(c=>c.confirmado===false).length;
+
+    const headerHtml=`<div class="card" style="background:${vagasAbertas?'#E6F7EF':'#F0EEEA'};border-color:${vagasAbertas?'#9FE1CB':'var(--bd)'};margin-bottom:12px">
+      <div class="card-row">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:${vagasAbertas?'#0F6E56':'var(--tx2)'}">${vagasAbertas?'✅ Vagas diaristas abertas':'🔒 Vagas diaristas fechadas'}</div>
+          <div style="font-size:11px;color:var(--tx2);margin-top:2px">${formatDataBR(dataObj)} · Taxa: R$ ${Number(jogo.taxaDiaria||0).toFixed(2).replace('.',',')}</div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <span style="font-size:11px;color:#0F6E56">✅ ${confirmados}</span>
+            <span style="font-size:11px;color:#A32D2D">❌ ${desistencias}</span>
+            <span style="font-size:11px;color:#666">⏳ ${inscritos.length-confirmacoes.length}</span>
+          </div>
+        </div>
+        <button class="btn-sm ${vagasAbertas?'no':'ok'}" onclick="window.toggleDiaristas('${jogoId}');setTimeout(()=>carregarDiaristas(),700)"><i class="ti ti-run"></i> ${vagasAbertas?'Fechar':'Abrir'}</button>
+      </div>
+    </div>`;
+
     const panelM=document.getElementById('diaristaMembrosPanel');
-    if(!inscritos.length){panelM.innerHTML=headerHtml+'<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro aprovado.</p></div>';}
-    else{panelM.innerHTML=headerHtml+`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+inscritos.map(i=>{const conf=diaristas.find(d=>d.usuarioId===i.usuarioId&&d.tipo==='membro');const confirmado=conf?.confirmado;return`<div class="card"><div class="card-row"><div><div class="card-title">${i.usuarioNome}</div></div><span class="badge ${confirmado===true?'bg':confirmado===false?'br':'ba'}">${confirmado===true?'Confirmado':confirmado===false?'Desistiu':'Pendente'}</span></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn-sm ok" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',true)"><i class="ti ti-check"></i> Confirmar</button><button class="btn-sm no" style="font-size:11px" onclick="window.marcarPresenca('${i.usuarioId}','${jogoId}',false)"><i class="ti ti-x"></i> Desistência</button></div></div>`;}).join('');}
-    const pendDiar=diaristas.filter(d=>d.tipo==='diarista');const panelS=document.getElementById('diaristaSolicPanel');
-    if(!pendDiar.length){panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação.</p></div>';}
-    else{panelS.innerHTML=pendDiar.map(d=>`<div class="card"><div class="card-row"><div><div class="card-title">${d.usuarioNome}</div><div class="card-sub">Taxa: R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</div></div><span class="badge ${d.status==='Aprovado'?'bg':d.status==='Rejeitado'?'br':'ba'}">${d.status}</span></div>${d.status==='Pendente'?`<div style="display:flex;gap:8px;margin-top:10px"><button class="btn-sm ok" onclick="window.aprovarDiarista('${d.id}','${jogoId}')"><i class="ti ti-check"></i> Aprovar</button><button class="btn-sm no" onclick="window.rejeitarDiarista('${d.id}','${jogoId}')"><i class="ti ti-x"></i> Rejeitar</button></div>`:''}</div>`).join('');}
-  }catch(e){loading(false);document.getElementById('diaristaMembrosPanel').innerHTML=`<div class="empty"><i class="ti ti-alert-circle"></i><p>Erro: ${e.message}</p></div>`;}
+    if(!inscritos.length){
+      panelM.innerHTML=headerHtml+'<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro inscrito.</p></div>';
+    }else{
+      panelM.innerHTML=headerHtml+'<div class="card" style="padding:0;overflow:hidden">'+
+        inscritos.map(i=>{
+          const conf=confirmacoes.find(c=>c.usuarioId===i.usuarioId);
+          const st=conf?.confirmado===true?'confirmado':conf?.confirmado===false?'desistiu':'pendente';
+          const badge=st==='confirmado'?'<span class="badge bg">✅ Confirmado</span>':st==='desistiu'?'<span class="badge br">❌ Desistiu</span>':'<span class="badge ba">⏳ Pendente</span>';
+          return`<div class="part-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+              <span class="part-nome">${i.usuarioNome}</span>${badge}
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm ok" style="font-size:10px;padding:4px 8px" onclick="window.marcarPresencaData('${i.usuarioId}','${i.usuarioNome}','${jogoId}','${dataKey}',true)"><i class="ti ti-check"></i> Confirmar</button>
+              <button class="btn-sm no" style="font-size:10px;padding:4px 8px" onclick="window.marcarPresencaData('${i.usuarioId}','${i.usuarioNome}','${jogoId}','${dataKey}',false)"><i class="ti ti-x"></i> Desistência</button>
+            </div>
+          </div>`;
+        }).join('')+'</div>';
+    }
+
+    const pendDiar=diaristas.filter(d=>d.tipo==='diarista');
+    const panelS=document.getElementById('diaristaSolicPanel');
+    if(!pendDiar.length){
+      panelS.innerHTML='<div class="empty"><i class="ti ti-run"></i><p>Nenhuma solicitação.</p></div>';
+    }else{
+      panelS.innerHTML=pendDiar.map(d=>`<div class="card"><div class="card-row"><div><div class="card-title">${d.usuarioNome}</div><div class="card-sub">Taxa: R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</div></div><span class="badge ${d.status==='Aprovado'?'bg':d.status==='Rejeitado'?'br':'ba'}">${d.status}</span></div>${d.status==='Pendente'?`<div style="display:flex;gap:8px;margin-top:10px"><button class="btn-sm ok" onclick="window.aprovarDiarista('${d.id}')"><i class="ti ti-check"></i> Aprovar</button><button class="btn-sm no" onclick="window.rejeitarDiarista('${d.id}')"><i class="ti ti-x"></i> Rejeitar</button></div>`:''}</div>`).join('');
+    }
+  }catch(e){
+    loading(false);
+    document.getElementById('diaristaMembrosPanel').innerHTML=`<div class="empty"><i class="ti ti-alert-circle"></i><p>Erro: ${e.message}</p></div>`;
+  }
 };
-window.marcarPresenca=async function(usuarioId,jogoId,confirmado){loading(true);const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)));const ex=snap.docs.find(d=>d.data().usuarioId===usuarioId&&d.data().tipo==='membro');if(!ex)await addDoc(collection(db,'diaristas'),{jogoId,usuarioId,tipo:'membro',confirmado,criadoEm:serverTimestamp()});else await updateDoc(doc(db,'diaristas',ex.id),{confirmado});showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada.');await carregarDiaristas();loading(false);};
+
+// Gerente marca presença por data
+window.marcarPresencaData=async function(usuarioId,usuarioNome,jogoId,data,confirmado){
+  loading(true);
+  const snap=await getDocs(query(collection(db,'confirmacoes'),
+    where('jogoId','==',jogoId),where('data','==',data),where('usuarioId','==',usuarioId)));
+  if(snap.empty){
+    await addDoc(collection(db,'confirmacoes'),{jogoId,data,usuarioId,usuarioNome,confirmado,criadoEm:serverTimestamp()});
+  }else{
+    await updateDoc(doc(db,'confirmacoes',snap.docs[0].id),{confirmado});
+  }
+  showToast(confirmado?'✅ Presença confirmada!':'⚠️ Desistência registrada.');
+  await carregarDiaristas();
+  loading(false);
+};
+window.marcarPresenca=window.marcarPresencaData; // compatibilidade
 window.aprovarDiarista=async function(id){loading(true);await updateDoc(doc(db,'diaristas',id),{status:'Aprovado'});showToast('✅ Diarista aprovado!');await carregarDiaristas();loading(false);};
 window.rejeitarDiarista=async function(id){loading(true);await updateDoc(doc(db,'diaristas',id),{status:'Rejeitado'});showToast('❌ Diarista rejeitado.');await carregarDiaristas();loading(false);};
 
