@@ -2205,7 +2205,7 @@ function initDiaristasGerente(){
   const sel = document.getElementById('diaristasJogoSel');
   const jogosAbertos = allJogos.filter(j=>j.status==='Aberto');
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
 }
 
 window.carregarDiaristas = async function(){
@@ -2222,11 +2222,28 @@ window.carregarDiaristas = async function(){
     const diaristas = diarSnap.docs.map(d=>({id:d.id,...d.data()}));
     loading(false);
 
+const jogo = _diaristasJogoAtual;
+    const vagasAbertas = jogo.vagasDiaristas==='sim';
+    const headerHtml = `<div class="card" style="background:${vagasAbertas?'#E6F7EF':'#F0EEEA'};border-color:${vagasAbertas?'#9FE1CB':'var(--bd)'};margin-bottom:12px">
+      <div class="card-row">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:${vagasAbertas?'#0F6E56':'var(--tx2)'}">
+            ${vagasAbertas?'✅ Vagas de diaristas abertas':'🔒 Vagas de diaristas fechadas'}
+          </div>
+          <div style="font-size:11px;color:var(--tx2);margin-top:2px">Taxa: R$ ${Number(jogo.taxaDiaria||0).toFixed(2).replace('.',',')}</div>
+        </div>
+        <button class="btn-sm ${vagasAbertas?'no':'ok'}" onclick="window.toggleDiaristas('${jogo.id}');setTimeout(()=>carregarDiaristas(),600)">
+          <i class="ti ti-run"></i> ${vagasAbertas?'Fechar vagas':'Abrir vagas'}
+        </button>
+      </div>
+    </div>`;
     const panelM = document.getElementById('diaristaMembrosPanel');
     if(!inscritos.length){
-      panelM.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro aprovado neste jogo.</p></div>';
+      panelM.innerHTML= headerHtml + '<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro aprovado neste jogo.</p></div>';
     } else {
-      panelM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+
+      panelM.innerHTML= headerHtml + `<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">${inscritos.length} membro(s) inscrito(s)</div>`+
+
+
       inscritos.map(i=>{
         const conf = diaristas.find(d=>d.usuarioId===i.usuarioId && d.tipo==='membro');
         const confirmado = conf?.confirmado;
@@ -2302,7 +2319,7 @@ window.initDiaristasMembro = async function(){
   const sel = document.getElementById('diaristasJogoSelMembro');
   const jogosAbertos = allJogos.filter(j=>j.status==='Aberto');
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
 };
 
 window.carregarInfoDiaMembro = async function(){
