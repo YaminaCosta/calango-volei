@@ -77,7 +77,7 @@ html,body{height:100%;background:var(--bg)}
 .sec-title{font-size:15px;font-weight:700;color:var(--tx)}
 .btn-sm{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--sur);color:var(--tx);display:inline-flex;align-items:center;gap:4px;transition:all .15s}
 .btn-sm:hover{background:var(--sur2)}.btn-sm.pr{background:var(--or);color:#fff;border-color:var(--or)}.btn-sm.pr:hover{background:var(--or2)}
-.btn-sm.ok{background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB}.btn-sm.no{background:#FEEEEE;color:#A32D2D;border-color:#F7C1C1}
+.btn-sm.ok{background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB}.btn-sm.no{background:#FEEEEE;color:#A32D2D;border-color:#F7C1C1}.btn-sm.blue{background:#E8F3FE;color:#185FA5;border-color:#B5D4F4}
 .btn-action{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;border:1px solid var(--bd);background:var(--sur);color:var(--tx);margin-bottom:9px;width:100%;text-align:left}
 .bai{width:40px;height:40px;border-radius:10px;background:#FEF0E6;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .bai i{font-size:20px;color:var(--or)}.bat{flex:1}.bat-title{font-size:14px;font-weight:600;color:var(--tx)}.bat-sub{font-size:11px;color:var(--tx2);margin-top:1px}
@@ -292,8 +292,38 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <button class="btn-action" onclick="gerentePage('pageGerenteJogos',document.querySelectorAll('#gerenteNav .bnav-btn')[5])"><div class="bai"><i class="ti ti-calendar-plus"></i></div><div class="bat"><div class="bat-title">Configurar jogos</div><div class="bat-sub">Calendário e valores</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerentePeriodos',document.querySelectorAll('#gerenteNav .bnav-btn')[6])"><div class="bai"><i class="ti ti-calendar-stats"></i></div><div class="bat"><div class="bat-title">Períodos de inscrição</div><div class="bat-sub">Vigências</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[7])"><div class="bai"><i class="ti ti-users"></i></div><div class="bat"><div class="bat-title">Gerenciar membros</div><div class="bat-sub" id="hintMembros">—</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteConfig',document.querySelectorAll('#gerenteNav .bnav-btn')[8])"><div class="bai"><i class="ti ti-settings"></i></div><div class="bat"><div class="bat-title">Configurações</div><div class="bat-sub">PIX e dados do clube</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
       </div>
-      <div class="page" id="pageGerenteInscricoes"><div class="sec-header"><div class="sec-title">Inscrições pendentes</div></div><div id="inscricoesPendList"></div></div>
+      <div class="page" id="pageGerenteInscricoes">
+        <div class="sec-header"><div class="sec-title">Inscrições pendentes</div></div>
+        <div id="inscricoesPendList"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">
+          <button class="btn-sm blue" style="width:100%;justify-content:center" onclick="gerentePage('pageGerenteTodasInscricoes',null);carregarTodasInscricoes()">
+            <i class="ti ti-list"></i> Ver todas as inscrições (incluindo aprovadas)
+          </button>
+        </div>
+      </div>
+
+      <!-- TODAS AS INSCRIÇÕES -->
+      <div class="page" id="pageGerenteTodasInscricoes">
+        <div class="sec-header">
+          <div class="sec-title">Todas as inscrições</div>
+          <button class="btn-sm" onclick="gerentePage('pageGerenteInscricoes',document.querySelectorAll('#gerenteNav .bnav-btn')[1])"><i class="ti ti-arrow-left"></i> Voltar</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <select id="filtroTodasStatus" class="form-control" style="flex:1;min-width:90px;padding:7px 10px;font-size:12px" onchange="filtrarTodasInscricoes()">
+            <option value="">Todos os status</option>
+            <option>Aprovado</option>
+            <option>Pendente</option>
+            <option>Rejeitado</option>
+          </select>
+          <select id="filtroTodasMes" class="form-control" style="flex:1;min-width:100px;padding:7px 10px;font-size:12px" onchange="filtrarTodasInscricoes()">
+            <option value="">Todos os períodos</option>
+          </select>
+          <input id="filtroTodasBusca" class="form-control" placeholder="Buscar membro..." style="flex:2;min-width:120px;padding:7px 10px;font-size:12px" oninput="filtrarTodasInscricoes()">
+        </div>
+        <div id="todasInscricoesList"></div>
+      </div>
       <div class="page" id="pageGerenteNivel"><div class="sec-header"><div class="sec-title">Solicitações de nível</div></div><div id="nivelSolicList"></div></div>
       <div class="page" id="pageGerenteDiaristas">
         <div class="sec-header"><div class="sec-title">Diaristas & Confirmações</div></div>
@@ -357,6 +387,50 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         </div>
         <div id="usuariosGerenteList"></div>
       </div>
+
+      <!-- CONFIGURAÇÕES -->
+      <div class="page" id="pageGerenteConfig">
+        <div class="sec-header"><div class="sec-title">Configurações do clube</div></div>
+
+        <!-- PIX -->
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Chave PIX para recebimento</div>
+        <div class="card" style="margin-bottom:6px">
+          <div class="form-group">
+            <label class="form-label">Tipo da chave PIX</label>
+            <select class="form-control" id="cfgPixTipo" onchange="atualizarMascaraPix()">
+              <option value="">Selecione o tipo...</option>
+              <option value="cpf">CPF (000.000.000-00)</option>
+              <option value="email">E-mail</option>
+              <option value="telefone">Telefone (+55 00 00000-0000)</option>
+              <option value="aleatoria">Chave aleatória (EVP)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chave PIX</label>
+            <input class="form-control" id="cfgPixChave" placeholder="Digite a chave PIX...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome do favorecido (como aparece no PIX)</label>
+            <input class="form-control" id="cfgPixNome" placeholder="Ex: Calango Vôlei Clube">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cidade</label>
+            <input class="form-control" id="cfgPixCidade" placeholder="Ex: Salvador">
+          </div>
+          <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="salvarConfig()">
+            <i class="ti ti-device-floppy"></i> Salvar configurações
+          </button>
+        </div>
+        <div class="card" style="background:#E8F3FE;border-color:#B5D4F4">
+          <div style="font-size:12px;color:#185FA5;line-height:1.6">
+            <strong>Como funciona:</strong> com a chave cadastrada, os membros verão um botão <strong>"Pagar via PIX"</strong> nas inscrições aprovadas. O app gera um código PIX Copia e Cola com o valor exato já preenchido. O membro copia e cola no app do banco — funciona em qualquer banco, sem taxas extras.
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px">Pré-visualização do botão (como o membro vê)</div>
+        <div class="card" id="prevPix">
+          <div style="font-size:13px;color:var(--tx2);text-align:center">Configure a chave PIX acima para ver a pré-visualização</div>
+        </div>
+      </div>
     </div>
     <div class="bottomnav" id="gerenteNav">
       <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome',this)"><i class="ti ti-home"></i>Início</button>
@@ -367,6 +441,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos',this)"><i class="ti ti-calendar"></i>Jogos</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerentePeriodos',this)"><i class="ti ti-calendar-stats"></i>Períodos</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this)"><i class="ti ti-users"></i>Membros</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteConfig',this);carregarConfig()"><i class="ti ti-settings"></i>Config</button>
     </div>
   </div>
 </div><!-- screenMain -->
@@ -421,6 +496,16 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
     </div>
     <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="periodoStatus"><option value="Aberto">Aberto — membros podem se inscrever</option><option value="Fechado">Fechado</option></select></div>
     <div class="modal-actions"><button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalNovoPeriodo')">Cancelar</button><button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarNovoPeriodo()">Salvar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPix">
+  <div class="modal">
+    <div class="modal-title">💚 Pagar via PIX</div>
+    <div id="modalPixContent"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalPix')">Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -631,11 +716,184 @@ async function renderMinhasInscricoes(inscricoes){
   if(!inscricoes.length){el.innerHTML='<div class="empty"><i class="ti ti-calendar-x"></i><p>Você não tem inscrições ainda.</p></div>';return;}
   let total=0;inscricoes.forEach(i=>{if(i.status==='Aprovado')total+=Number(i.jogoValor||0);});
   document.getElementById('totalMesInscricoes').textContent='R$ '+total.toFixed(2).replace('.',',');
+
+  // carrega config PIX
+  const pixCfg = await carregarConfigPix();
+
   el.innerHTML=inscricoes.map(i=>{
     const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
     const p=i.jogoTipo==='Dupla'&&i.parceiroNome?`<div style="font-size:11px;color:var(--tx2);margin-top:3px">👥 com ${i.parceiroNome.split(' ')[0]}</div>`:'';
-    return `<div class="card"><div class="card-row"><div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div>${p}</div><span class="badge ${bc}">${i.status}</span></div><div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div></div>`;
+    const cancelBtn=i.status==='Pendente'
+      ?`<button class="btn-sm no" style="margin-top:10px;font-size:12px;width:100%;justify-content:center" onclick="window.cancelarInscricao('${i.id}','${i.jogoNome}')"><i class="ti ti-x"></i> Cancelar inscrição</button>`:'';
+    // botão PIX só para aprovadas e se chave configurada
+    const pixBtn=(i.status==='Aprovado'&&pixCfg?.chave)
+      ?`<button class="btn-sm" style="margin-top:10px;width:100%;justify-content:center;background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB" onclick="window.abrirPix('${i.id}','${i.jogoNome}',${Number(i.jogoValor||0)})">
+          <i class="ti ti-paw" style="font-size:14px"></i> Pagar via PIX · R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}
+        </button>`:'';
+    return `<div class="card">
+      <div class="card-row"><div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div>${p}</div><span class="badge ${bc}">${i.status}</span></div>
+      <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div>
+      ${pixBtn}${cancelBtn}
+    </div>`;
   }).join('');
+}
+
+window.cancelarInscricao=async function(inscId,jogoNome){
+  if(!confirm(`Cancelar inscrição em "${jogoNome}"?\n\nSó inscrições Pendentes podem ser canceladas pelo membro.`))return;
+  loading(true);
+  await deleteDoc(doc(db,'inscricoes',inscId));
+  showToast('✅ Inscrição cancelada.');
+  await initMemberPage();
+  loading(false);
+};
+
+// ══ PIX COPIA E COLA ══
+
+// Gera o payload padrão EMV PIX (BR Code)
+function gerarPixCopiaCola(chave, tipochave, nome, cidade, valor, txid){
+  const fmt=(id,val)=>{
+    const len=String(val.length).padStart(2,'0');
+    return `${id}${len}${val}`;
+  };
+  // limpa nome e cidade
+  nome=nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,25).trim();
+  cidade=cidade.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,15).trim();
+  txid=(txid||'CALANGO').replace(/[^a-zA-Z0-9]/g,'').slice(0,25)||'CALANGO';
+
+  // normaliza chave por tipo
+  let chaveNorm=chave.trim();
+  if(tipochave==='cpf') chaveNorm=chave.replace(/\D/g,'');
+  if(tipochave==='telefone') chaveNorm='+55'+chave.replace(/\D/g,'').replace(/^55/,'');
+
+  const merchantAccountInfo=fmt('00','BR.GOV.BCB.PIX')+fmt('01',chaveNorm);
+  const valorStr=valor>0?valor.toFixed(2):'';
+
+  let payload='';
+  payload+=fmt('00','01');                              // Payload Format Indicator
+  payload+=fmt('26',merchantAccountInfo);               // Merchant Account Info
+  payload+=fmt('52','0000');                            // Merchant Category Code
+  payload+=fmt('53','986');                             // Transaction Currency (BRL)
+  if(valorStr) payload+=fmt('54',valorStr);             // Transaction Amount
+  payload+=fmt('58','BR');                              // Country Code
+  payload+=fmt('59',nome);                              // Merchant Name
+  payload+=fmt('60',cidade);                            // Merchant City
+  payload+=fmt('62',fmt('05',txid));                    // Additional Data (txid)
+  payload+='6304';                                      // CRC placeholder
+
+  // CRC16-CCITT
+  const crc=crc16(payload);
+  return payload+crc;
+}
+
+function crc16(str){
+  let crc=0xFFFF;
+  for(let i=0;i<str.length;i++){
+    crc^=str.charCodeAt(i)<<8;
+    for(let j=0;j<8;j++){
+      crc=(crc&0x8000)?((crc<<1)^0x1021):crc<<1;
+    }
+  }
+  return (crc&0xFFFF).toString(16).toUpperCase().padStart(4,'0');
+}
+
+// Carrega config PIX do Firestore (coleção 'config', doc 'pix')
+async function carregarConfigPix(){
+  try{
+    const{getDoc:gd,doc:dc}=window._fb||{getDoc,doc};
+    const snap=await getDoc(doc(db,'config','pix'));
+    return snap.exists()?snap.data():null;
+  }catch(e){return null;}
+}
+
+// Abre modal PIX para o membro
+window.abrirPix=async function(inscId,jogoNome,valor){
+  const cfg=await carregarConfigPix();
+  if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada pelo gerente ainda.');return;}
+  const txid=`CAL${inscId.slice(0,10).replace(/[^a-zA-Z0-9]/g,'')}`;
+  const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',valor,txid);
+  document.getElementById('modalPixContent').innerHTML=`
+    <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
+      <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">Valor a pagar</div>
+      <div style="font-size:28px;font-weight:700;color:#0F6E56">R$ ${valor.toFixed(2).replace('.',',')}</div>
+      <div style="font-size:12px;color:#0F6E56;margin-top:4px">${jogoNome}</div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
+    <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
+    <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="ti ti-copy"></i> Copiar código PIX
+    </button>
+    <div style="font-size:12px;color:var(--tx2);margin-top:12px;line-height:1.6;text-align:center">
+      Abra o app do seu banco → PIX → Pagar → Copia e Cola<br>
+      <strong>Favorecido:</strong> ${cfg.nome||'Calango Vôlei'} · <strong>Chave:</strong> ${cfg.tipo?.toUpperCase()||'PIX'}
+    </div>`;
+  document.getElementById('modalPix').classList.add('open');
+};
+
+window.copiarPix=function(codigo){
+  navigator.clipboard.writeText(codigo).then(()=>{
+    showToast('✅ Código PIX copiado! Cole no app do seu banco.');
+  }).catch(()=>{
+    // fallback para celulares sem clipboard API
+    const ta=document.createElement('textarea');
+    ta.value=codigo;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ Código PIX copiado!');
+  });
+};
+
+// ══ CONFIG PIX — GERENTE ══
+window.carregarConfig=async function(){
+  const cfg=await carregarConfigPix();
+  if(cfg){
+    document.getElementById('cfgPixTipo').value=cfg.tipo||'';
+    document.getElementById('cfgPixChave').value=cfg.chave||'';
+    document.getElementById('cfgPixNome').value=cfg.nome||'';
+    document.getElementById('cfgPixCidade').value=cfg.cidade||'';
+    atualizarPrevPix(cfg);
+  }
+};
+
+window.atualizarMascaraPix=function(){
+  const tipo=document.getElementById('cfgPixTipo').value;
+  const input=document.getElementById('cfgPixChave');
+  const placeholders={cpf:'000.000.000-00',email:'exemplo@email.com',telefone:'(71) 99999-9999',aleatoria:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'};
+  input.placeholder=placeholders[tipo]||'Digite a chave PIX...';
+  input.value='';
+};
+
+window.salvarConfig=async function(){
+  const tipo=document.getElementById('cfgPixTipo').value;
+  const chave=document.getElementById('cfgPixChave').value.trim();
+  const nome=document.getElementById('cfgPixNome').value.trim();
+  const cidade=document.getElementById('cfgPixCidade').value.trim();
+  if(!tipo||!chave||!nome||!cidade){showToast('⚠️ Preencha todos os campos');return;}
+  loading(true);
+  const{setDoc:sd,doc:dc}=window._fb||{};
+  await (sd||setDoc)(doc(db,'config','pix'),{tipo,chave,nome,cidade,atualizadoEm:serverTimestamp()});
+  loading(false);
+  showToast('✅ Configurações salvas!');
+  atualizarPrevPix({tipo,chave,nome,cidade});
+};
+
+function atualizarPrevPix(cfg){
+  if(!cfg?.chave){return;}
+  const tipoLabel={cpf:'CPF',email:'E-mail',telefone:'Telefone',aleatoria:'Chave aleatória'};
+  const preview=document.getElementById('prevPix');
+  if(!preview)return;
+  // gera código de exemplo com valor R$ 25,00
+  const ex=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',25,'EXEMPLO');
+  preview.innerHTML=`
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:10px">Exemplo com valor R$ 25,00:</div>
+    <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:12px">
+      <div style="font-size:11px;color:#0F6E56;margin-bottom:2px">Valor</div>
+      <div style="font-size:22px;font-weight:700;color:#0F6E56">R$ 25,00</div>
+      <div style="font-size:11px;color:#0F6E56;margin-top:2px">${cfg.nome}</div>
+    </div>
+    <div style="background:var(--sur2);border-radius:9px;padding:10px;font-size:10px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px">${ex}</div>
+    <div style="background:#E6F7EF;border-radius:9px;padding:10px 12px;font-size:12px;color:#0F6E56">
+      ✅ Tipo: <strong>${tipoLabel[cfg.tipo]||cfg.tipo}</strong> · Favorecido: <strong>${cfg.nome}</strong> · Cidade: <strong>${cfg.cidade}</strong>
+    </div>`;
 }
 
 async function renderMinhasDuplas(duplas){
@@ -972,11 +1230,90 @@ async function renderInscricoesPend(){
   if(snap.empty){el.innerHTML='<div class="empty"><i class="ti ti-circle-check"></i><p>Nenhuma inscrição pendente ✅</p></div>';return;}
   el.innerHTML=snap.docs.map(d=>{
     const i={id:d.id,...d.data()};const j=allJogos.find(x=>x.id===i.jogoId);
-    return `<div class="card"><div class="card-title">${i.usuarioNome}</div><div class="card-sub">${i.jogoNome} · ${j?.dia||''} · ${j?.nivel||''} · ${i.jogoMesAno||''}</div><div class="card-meta"><span class="badge ba">Pendente</span><span class="badge bor">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div><div style="display:flex;gap:8px;margin-top:11px"><button class="btn-sm ok" onclick="window.aprovarInsc('${i.id}')"><i class="ti ti-check"></i> Aprovar</button><button class="btn-sm no" onclick="window.rejeitarInsc('${i.id}')"><i class="ti ti-x"></i> Rejeitar</button></div></div>`;
+    return `<div class="card"><div class="card-title">${i.usuarioNome}</div><div class="card-sub">${i.jogoNome} · ${j?.dia||''} · ${j?.nivel||''} · ${i.jogoMesAno||''}</div><div class="card-meta"><span class="badge ba">Pendente</span><span class="badge bor">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div><div style="display:flex;gap:8px;margin-top:11px"><button class="btn-sm ok" onclick="window.aprovarInsc('${i.id}')"><i class="ti ti-check"></i> Aprovar</button><button class="btn-sm no" onclick="window.rejeitarInsc('${i.id}')"><i class="ti ti-x"></i> Rejeitar</button><button class="btn-sm" onclick="window.excluirInscGerente('${i.id}','${i.usuarioNome}')" style="margin-left:auto"><i class="ti ti-trash"></i></button></div></div>`;
   }).join('');
 }
 window.aprovarInsc=async function(id){loading(true);await updateDoc(doc(db,'inscricoes',id),{status:'Aprovado'});showToast('✅ Aprovado!');await renderInscricoesPend();await renderGerenteHome();loading(false);};
 window.rejeitarInsc=async function(id){loading(true);await updateDoc(doc(db,'inscricoes',id),{status:'Rejeitado'});showToast('❌ Rejeitado.');await renderInscricoesPend();await renderGerenteHome();loading(false);};
+window.excluirInscGerente=async function(id,nome){
+  if(!confirm(`Excluir inscrição de ${nome}?\nEsta ação não pode ser desfeita.`))return;
+  loading(true);
+  await deleteDoc(doc(db,'inscricoes',id));
+  showToast('🗑️ Inscrição excluída.');
+  await renderInscricoesPend();
+  await renderGerenteHome();
+  loading(false);
+};
+
+let _todasInscricoes=[];
+window.carregarTodasInscricoes=async function(){
+  loading(true);
+  const snap=await getDocs(collection(db,'inscricoes'));
+  _todasInscricoes=snap.docs.map(d=>({id:d.id,...d.data()}));
+  // preenche filtro de período
+  const meses=[...new Set(_todasInscricoes.map(i=>i.jogoMesAno).filter(Boolean))].sort();
+  const sel=document.getElementById('filtroTodasMes');
+  sel.innerHTML='<option value="">Todos os períodos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('filtroTodasStatus').value='';
+  document.getElementById('filtroTodasBusca').value='';
+  filtrarTodasInscricoes();
+  loading(false);
+};
+
+window.filtrarTodasInscricoes=function(){
+  const status=document.getElementById('filtroTodasStatus').value;
+  const mes=document.getElementById('filtroTodasMes').value;
+  const busca=document.getElementById('filtroTodasBusca').value.toLowerCase().trim();
+  let lista=_todasInscricoes.filter(i=>{
+    if(status&&i.status!==status)return false;
+    if(mes&&i.jogoMesAno!==mes)return false;
+    if(busca&&!(i.usuarioNome||'').toLowerCase().includes(busca))return false;
+    return true;
+  }).sort((a,b)=>(a.jogoMesAno||'').localeCompare(b.jogoMesAno||'')||(a.usuarioNome||'').localeCompare(b.usuarioNome||''));
+  const el=document.getElementById('todasInscricoesList');
+  if(!lista.length){el.innerHTML='<div class="empty"><i class="ti ti-search"></i><p>Nenhuma inscrição encontrada.</p></div>';return;}
+  el.innerHTML=lista.map(i=>{
+    const j=allJogos.find(x=>x.id===i.jogoId);
+    const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
+    const p=i.jogoTipo==='Dupla'&&i.parceiroNome?` · 👥 ${i.parceiroNome.split(' ')[0]}`:'';
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${i.usuarioNome||'—'}</div>
+          <div class="card-sub">${i.jogoNome||'—'} · ${j?.dia||''} · ${j?.nivel||''} · ${i.jogoMesAno||''}${p}</div>
+        </div>
+        <span class="badge ${bc}">${i.status}</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+        <span style="font-size:13px;font-weight:600;color:#0F6E56">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span>
+        <div style="display:flex;gap:6px">
+          ${i.status!=='Aprovado'?`<button class="btn-sm ok" style="font-size:11px;padding:5px 10px" onclick="window.aprovarInscDireto('${i.id}')"><i class="ti ti-check"></i> Aprovar</button>`:''}
+          <button class="btn-sm no" style="font-size:11px;padding:5px 10px" onclick="window.excluirInscTodasList('${i.id}','${(i.usuarioNome||'').replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i> Excluir</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+window.aprovarInscDireto=async function(id){
+  loading(true);
+  await updateDoc(doc(db,'inscricoes',id),{status:'Aprovado'});
+  const i=_todasInscricoes.find(x=>x.id===id);if(i)i.status='Aprovado';
+  filtrarTodasInscricoes();
+  await renderGerenteHome();
+  loading(false);
+  showToast('✅ Aprovado!');
+};
+window.excluirInscTodasList=async function(id,nome){
+  if(!confirm(`Excluir inscrição de ${nome}?\nEsta ação não pode ser desfeita.`))return;
+  loading(true);
+  await deleteDoc(doc(db,'inscricoes',id));
+  _todasInscricoes=_todasInscricoes.filter(x=>x.id!==id);
+  filtrarTodasInscricoes();
+  await renderGerenteHome();
+  loading(false);
+  showToast('🗑️ Excluída.');
+};
 
 async function renderNivelSolic(){
   const snap=await getDocs(query(collection(db,'solicitacoesNivel'),where('status','==','Pendente')));
