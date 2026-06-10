@@ -1193,20 +1193,48 @@ window.carregarParticipantesDia=async function(){
     const desistencias=confirmacoes.filter(c=>c.confirmado===false).length;
     const pendentes=inscritos.length-confirmacoes.length;
 
-    // verifica pagamentos do período deste jogo
+    // verifica pagamentos do período deste jogo e calcula total devido por membro
     const periodoJogo=jogo.mesAno||'';
-    let pagamentosMap={};
+    let pagamentosMap={}; // uid → valor pago
     if(periodoJogo){
       const pagSnap=await getDocs(query(collection(db,'pagamentos'),where('periodo','==',periodoJogo)));
-      pagSnap.docs.forEach(d=>{pagamentosMap[d.data().usuarioId]=true;});
+      pagSnap.docs.forEach(d=>{
+        const pd=d.data();
+        pagamentosMap[pd.usuarioId]=(pagamentosMap[pd.usuarioId]||0)+Number(pd.valor||0);
+      });
     }
-    // Regra: membro aparece na lista se pagou (ou se não há pagamentos registrados para o período)
+
+    // calcula total devido por cada inscrito no período (soma de todas inscrições aprovadas)
+    const totalDevidoMap={}; // uid → total a pagar no período
+    if(periodoJogo){
+      const inscPeriodoSnap=await getDocs(query(collection(db,'inscricoes'),
+        where('jogoMesAno','==',periodoJogo),where('status','==','Aprovado')));
+      inscPeriodoSnap.docs.forEach(d=>{
+        const id=d.data();
+        totalDevidoMap[id.usuarioId]=(totalDevidoMap[id.usuarioId]||0)+Number(id.jogoValor||0);
+      });
+    }
+
+    // Regra: membro aparece se pagou >= total devido (ou se não há nenhum pagamento registrado no período)
     const temPagamentos=Object.keys(pagamentosMap).length>0;
-    const inscritosVisiveis=temPagamentos
-      ? inscritos.filter(i=>pagamentosMap[i.usuarioId])
+
+    function statusPagamento(uid){
+      if(!temPagamentos) return 'sem_controle';
+      const pago=pagamentosMap[uid]||0;
+      const devido=totalDevidoMap[uid]||0;
+      if(pago<=0) return 'nao_pagou';
+      if(pago>=devido) return 'ok';
+      return 'parcial'; // pagou menos do que deve
+    }
+
+    const inscritosVisiveis = temPagamentos
+      ? inscritos.filter(i=>statusPagamento(i.usuarioId)==='ok')
       : inscritos;
-    const inscritosSemPagamento=temPagamentos
-      ? inscritos.filter(i=>!pagamentosMap[i.usuarioId])
+    const inscritosParcial = temPagamentos
+      ? inscritos.filter(i=>statusPagamento(i.usuarioId)==='parcial')
+      : [];
+    const inscritosSemPagamento = temPagamentos
+      ? inscritos.filter(i=>statusPagamento(i.usuarioId)==='nao_pagou')
       : [];
 
     const panel=document.getElementById('participantesDiaPanel');
@@ -1219,13 +1247,15 @@ window.carregarParticipantesDia=async function(){
         <div style="background:#FEEEEE;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#A32D2D">${desistencias}</div><div style="font-size:10px;color:#A32D2D">Desistências</div></div>
         <div style="background:#F0EEEA;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#666">${pendentes}</div><div style="font-size:10px;color:#666">Pendentes</div></div>
       </div>
-      ${temPagamentos?`<div style="font-size:11px;color:#0F6E56;margin-top:8px;text-align:center">💚 Mostrando apenas membros com pagamento confirmado</div>`:''}
+      ${temPagamentos?`<div style="font-size:11px;color:#0F6E56;margin-top:8px;text-align:center">💚 Exibindo membros com pagamento confirmado (valor total do período)</div>`:''}
     </div>`;
 
-    // lista de inscritos com pagamento
-    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Inscritos ${temPagamentos?'com pagamento':''}(${inscritosVisiveis.length})</div>`;
+    // ── Inscritos com pagamento completo ──
+    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+      ${temPagamentos?`Pagamento OK (${inscritosVisiveis.length})`:`Inscritos (${inscritosVisiveis.length})`}
+    </div>`;
     if(!inscritosVisiveis.length){
-      html+='<div class="empty" style="padding:16px"><i class="ti ti-calendar-x"></i><p>Nenhum membro inscrito com pagamento confirmado</p></div>';
+      html+='<div class="empty" style="padding:16px"><i class="ti ti-calendar-x"></i><p>Nenhum membro com pagamento completo</p></div>';
     }else{
       html+='<div class="card" style="padding:0;overflow:hidden">';
       html+=inscritosVisiveis.map(i=>{
@@ -1234,18 +1264,42 @@ window.carregarParticipantesDia=async function(){
         const label=st==='confirmado'?'✅ Confirmado':st==='desistiu'?'❌ Desistiu':'⏳ Pendente';
         const cls=st==='confirmado'?'part-confirmado':st==='desistiu'?'part-desistiu':'part-pendente';
         const nomeExib1=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];
-        return`<div class="part-item"><span class="part-nome">${nomeExib1} <span style="font-size:10px;color:#0F6E56">💚</span></span><span class="part-status ${cls}">${label}</span></div>`;
+        const pago=pagamentosMap[i.usuarioId]||0;
+        const devido=totalDevidoMap[i.usuarioId]||0;
+        const infoValor=temPagamentos?` <span style="font-size:10px;color:#0F6E56">💚 R$ ${pago.toFixed(2).replace('.',',')}</span>`:'';
+        return`<div class="part-item"><span class="part-nome">${nomeExib1}${infoValor}</span><span class="part-status ${cls}">${label}</span></div>`;
       }).join('');
       html+='</div>';
     }
 
-    // aguardando pagamento
+    // ── Pagamento parcial (pagou mas valor insuficiente) ──
+    if(inscritosParcial.length){
+      html+=`<div style="font-size:11px;font-weight:600;color:#854F0B;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Pagamento parcial (${inscritosParcial.length})</div>`;
+      html+='<div class="card" style="padding:0;overflow:hidden;border-color:#FDDCB5">';
+      html+=inscritosParcial.map(i=>{
+        const nomeExib3=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];
+        const pago=pagamentosMap[i.usuarioId]||0;
+        const devido=totalDevidoMap[i.usuarioId]||0;
+        const falta=devido-pago;
+        return`<div class="part-item">
+          <span class="part-nome" style="color:#854F0B">${nomeExib3}</span>
+          <span class="part-status" style="background:#FFF3DC;color:#854F0B">⚠️ Falta R$ ${falta.toFixed(2).replace('.',',')}</span>
+        </div>`;
+      }).join('');
+      html+='</div>';
+    }
+
+    // ── Sem pagamento ──
     if(inscritosSemPagamento.length){
-      html+=`<div style="font-size:11px;font-weight:600;color:#A32D2D;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Aguardando pagamento (${inscritosSemPagamento.length})</div>`;
+      html+=`<div style="font-size:11px;font-weight:600;color:#A32D2D;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Sem pagamento (${inscritosSemPagamento.length})</div>`;
       html+='<div class="card" style="padding:0;overflow:hidden;border-color:#F7C1C1">';
       html+=inscritosSemPagamento.map(i=>{
         const nomeExib2=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];
-        return`<div class="part-item"><span class="part-nome" style="color:#A32D2D">${nomeExib2}</span><span class="part-status part-desistiu">Sem pagamento</span></div>`;
+        const devido=totalDevidoMap[i.usuarioId]||0;
+        return`<div class="part-item">
+          <span class="part-nome" style="color:#A32D2D">${nomeExib2}</span>
+          <span class="part-status part-desistiu">Devido R$ ${devido.toFixed(2).replace('.',',')}</span>
+        </div>`;
       }).join('');
       html+='</div>';
     }
