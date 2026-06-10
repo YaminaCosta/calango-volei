@@ -478,6 +478,13 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">Tipo de pagamento no extrato</label>
+            <select class="form-control" id="concilTipoPagamento" style="font-size:13px">
+              <option value="mensalidade">Mensalidade (inscrições do período)</option>
+              <option value="diaria">Diária (pagamento avulso por jogo)</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Arquivo OFX do extrato bancário</label>
             <input type="file" class="form-control" id="concilFile" accept=".ofx,.OFX" style="font-size:13px;padding:8px">
           </div>
@@ -487,9 +494,14 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         </div>
         <div id="concilResultado"></div>
         <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Pagamentos registrados</div>
-        <div class="form-group" style="margin-bottom:10px">
-          <select class="form-control" id="concilFiltroMes" style="font-size:13px" onchange="window.renderPagamentosRegistrados()">
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <select class="form-control" id="concilFiltroMes" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
             <option value="">Todos os períodos</option>
+          </select>
+          <select class="form-control" id="concilFiltroTipo" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
+            <option value="">Todos os tipos</option>
+            <option value="mensalidade">Mensalidade</option>
+            <option value="diaria">Diária</option>
           </select>
         </div>
         <div id="pagamentosRegistradosList"></div>
@@ -1195,11 +1207,13 @@ window.carregarParticipantesDia=async function(){
 
     // verifica pagamentos do período deste jogo e calcula total devido por membro
     const periodoJogo=jogo.mesAno||'';
-    let pagamentosMap={}; // uid → valor pago
+    let pagamentosMap={}; // uid → valor pago (SOMENTE mensalidade)
     if(periodoJogo){
       const pagSnap=await getDocs(query(collection(db,'pagamentos'),where('periodo','==',periodoJogo)));
       pagSnap.docs.forEach(d=>{
         const pd=d.data();
+        // ignora pagamentos de diária — não entram na comparação com inscrições
+        if(pd.tipo==='diaria') return;
         pagamentosMap[pd.usuarioId]=(pagamentosMap[pd.usuarioId]||0)+Number(pd.valor||0);
       });
     }
@@ -1839,16 +1853,26 @@ window.excluirPagamento=async function(id,nome){
 
 window.renderPagamentosRegistrados=async function(){
   const filtroMes=document.getElementById('concilFiltroMes')?.value||'';
+  const filtroTipo=document.getElementById('concilFiltroTipo')?.value||'';
   const snap=await getDocs(collection(db,'pagamentos'));
   let pags=snap.docs.map(d=>({id:d.id,...d.data()}));
   if(filtroMes) pags=pags.filter(p=>p.periodo===filtroMes);
-  pags.sort((a,b)=>(a.periodo||'').localeCompare(b.periodo||'')||(a.usuarioNome||'').localeCompare(b.usuarioNome||''));
+  if(filtroTipo) pags=pags.filter(p=>p.tipo===filtroTipo);
+  pags.sort((a,b)=>(a.periodo||'').localeCompare(b.periodo||'')||(a.tipo||'').localeCompare(b.tipo||'')||(a.usuarioNome||'').localeCompare(b.usuarioNome||''));
   const el=document.getElementById('pagamentosRegistradosList');
   if(!pags.length){el.innerHTML='<div class="empty"><i class="ti ti-cash-off"></i><p>Nenhum pagamento registrado.</p></div>';return;}
+  const tipoBadge=(t)=>t==='diaria'
+    ?'<span class="badge ba" style="font-size:10px">Diária</span>'
+    :'<span class="badge bg" style="font-size:10px">Mensalidade</span>';
   el.innerHTML=pags.map(p=>{
     const u=allUsers.find(x=>x.uid===p.usuarioId);
     const nome=u?.nomeApresentacao||p.usuarioNome?.split(' ')[0]||p.usuarioNome;
-    return`<div class="card"><div class="card-row"><div><div class="card-title">${nome}</div><div class="card-sub">${p.periodo} · ${p.data||''} · ${p.origem==='ofx'?'📄 OFX/Extrato':p.origem==='xlsx'?'📊 XLSX/Extrato':'✏️ Manual'}</div></div><span class="badge bg">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span></div><button class="btn-sm no" style="margin-top:8px;font-size:11px" onclick="window.excluirPagamento('${p.id}','${nome}')"><i class="ti ti-trash"></i> Remover</button></div>`;
+    const origemLabel=p.origem==='ofx'?'📄 OFX':p.origem==='manual'?'✏️ Manual':'✏️ Manual';
+    return`<div class="card"><div class="card-row"><div>
+      <div class="card-title">${nome} ${tipoBadge(p.tipo)}</div>
+      <div class="card-sub">${p.periodo} · ${p.data||''} · ${origemLabel}</div>
+    </div><span class="badge bg">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span></div>
+    <button class="btn-sm no" style="margin-top:8px;font-size:11px" onclick="window.excluirPagamento('${p.id}','${nome}')"><i class="ti ti-trash"></i> Remover</button></div>`;
   }).join('');
 };
 
@@ -1856,6 +1880,7 @@ window.renderPagamentosRegistrados=async function(){
 window.processarExtrato=async function(){
   const fileInput=document.getElementById('concilFile');
   const periodo=document.getElementById('concilPeriodo').value;
+  const tipoPagamento=document.getElementById('concilTipoPagamento').value||'mensalidade';
   if(!periodo){showToast('⚠️ Selecione o período');return;}
   if(!fileInput.files.length){showToast('⚠️ Selecione o arquivo OFX');return;}
   const file=fileInput.files[0];
@@ -2001,6 +2026,7 @@ window.processarExtrato=async function(){
           usuarioNome:usuario.nome,
           periodo,
           valor:trnamt,
+          tipo:tipoPagamento,
           origem:'ofx',
           data,
           fitid,
@@ -2081,24 +2107,29 @@ window.associarManual=async function(idx,periodo,valor,data){
   const sel=document.getElementById(`selManual${idx}`);
   if(!sel||!sel.value){showToast('⚠️ Selecione um membro');return;}
   const[uid,nome]=sel.value.split('|');
+  const tipoPagamento=document.getElementById('concilTipoPagamento')?.value||'mensalidade';
   loading(true);
-  const jaSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',uid),where('periodo','==',periodo)));
-  if(!jaSnap.empty){loading(false);showToast('⚠️ Já existe pagamento registrado para este membro/período');return;}
-  await addDoc(collection(db,'pagamentos'),{usuarioId:uid,usuarioNome:nome,periodo,valor,origem:'manual_concil',data,criadoEm:serverTimestamp()});
-  // remove o item da tela
+  // para diária permite múltiplos pagamentos; para mensalidade verifica duplicata
+  if(tipoPagamento==='mensalidade'){
+    const jaSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',uid),where('periodo','==',periodo),where('tipo','==','mensalidade')));
+    if(!jaSnap.empty){loading(false);showToast('⚠️ Mensalidade já registrada para este membro/período');return;}
+  }
+  await addDoc(collection(db,'pagamentos'),{usuarioId:uid,usuarioNome:nome,periodo,valor,tipo:tipoPagamento,origem:'manual_concil',data,criadoEm:serverTimestamp()});
   const item=sel.closest('div[style*="margin-bottom:12px"]');
-  if(item) item.innerHTML=`<div style="font-size:12px;color:#0F6E56">✅ Associado a ${nome.split(' ')[0]}</div>`;
+  if(item) item.innerHTML=`<div style="font-size:12px;color:#0F6E56">✅ Associado a ${nome.split(' ')[0]} (${tipoPagamento})</div>`;
   await renderPagamentosRegistrados();
   loading(false);
   showToast('✅ Pagamento associado!');
 };
 
 window.registrarManualFrom=async function(uid,nome,periodo,valor,data){
+  const tipoPagamento=document.getElementById('concilTipoPagamento')?.value||'mensalidade';
   loading(true);
-  // remove já existentes antes de registrar
-  const jaSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',uid),where('periodo','==',periodo)));
-  if(!jaSnap.empty){loading(false);showToast('⚠️ Pagamento já registrado para este membro/período');return;}
-  await addDoc(collection(db,'pagamentos'),{usuarioId:uid,usuarioNome:nome,periodo,valor,origem:'manual_concil',data,criadoEm:serverTimestamp()});
+  if(tipoPagamento==='mensalidade'){
+    const jaSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',uid),where('periodo','==',periodo),where('tipo','==','mensalidade')));
+    if(!jaSnap.empty){loading(false);showToast('⚠️ Mensalidade já registrada para este membro/período');return;}
+  }
+  await addDoc(collection(db,'pagamentos'),{usuarioId:uid,usuarioNome:nome,periodo,valor,tipo:tipoPagamento,origem:'manual_concil',data,criadoEm:serverTimestamp()});
   showToast('✅ Registrado manualmente!');
   await renderPagamentosRegistrados();
   loading(false);
