@@ -1868,16 +1868,16 @@ window.excluirPagamento=async function(id,nome){
   loading(false);
 };
 
-window.editarTipoPagamento=async function(id,tipoAtual){
-  const novoTipo=tipoAtual==='mensalidade'?'diaria':'mensalidade';
-  const label=novoTipo==='diaria'?'Diária':'Mensalidade';
-  if(!confirm(`Alterar tipo para "${label}"?`))return;
+window.salvarTipoPagamento=async function(id,novoTipo){
   loading(true);
   await updateDoc(doc(db,'pagamentos',id),{tipo:novoTipo});
+  const label=novoTipo==='diaria'?'Diária':'Mensalidade';
   showToast(`✅ Tipo alterado para ${label}!`);
-  await renderPagamentosRegistrados();
+  // não re-renderiza lista para não perder a seleção do filtro
   loading(false);
 };
+
+window.editarTipoPagamento=window.salvarTipoPagamento;
 
 window.renderPagamentosRegistrados=async function(){
   const filtroMes=document.getElementById('concilFiltroMes')?.value||'';
@@ -1895,15 +1895,27 @@ window.renderPagamentosRegistrados=async function(){
   el.innerHTML=pags.map(p=>{
     const u=allUsers.find(x=>x.uid===p.usuarioId);
     const nome=u?.nomeApresentacao||p.usuarioNome?.split(' ')[0]||p.usuarioNome;
-    const origemLabel=p.origem==='ofx'?'📄 OFX':p.origem==='manual'?'✏️ Manual':'✏️ Manual';
-    return`<div class="card"><div class="card-row"><div>
-      <div class="card-title">${nome} ${tipoBadge(p.tipo)}</div>
-      <div class="card-sub">${p.periodo} · ${p.data||''} · ${origemLabel}</div>
-    </div><span class="badge bg">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span></div>
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="btn-sm blue" style="flex:1;font-size:11px;justify-content:center" onclick="window.editarTipoPagamento('${p.id}','${p.tipo||'mensalidade'}')"><i class="ti ti-edit"></i> Alterar tipo</button>
-      <button class="btn-sm no" style="flex:1;font-size:11px;justify-content:center" onclick="window.excluirPagamento('${p.id}','${nome}')"><i class="ti ti-trash"></i> Remover</button>
-    </div></div>`;
+    const origemLabel=p.origem==='ofx'?'📄 OFX':'✏️ Manual';
+    const tipoAtual=p.tipo||'mensalidade';
+    return`<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-title">${nome}</div>
+          <div class="card-sub">${p.periodo} · ${p.data||''} · ${origemLabel}</div>
+        </div>
+        <span class="badge bg" style="white-space:nowrap">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;background:var(--sur2);border-radius:9px;padding:8px 12px">
+        <span style="font-size:12px;color:var(--tx2);flex:0 0 auto">Tipo:</span>
+        <select onchange="window.salvarTipoPagamento('${p.id}',this.value)" style="flex:1;font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--bd);background:#fff;color:var(--tx)">
+          <option value="mensalidade" ${tipoAtual==='mensalidade'?'selected':''}>Mensalidade</option>
+          <option value="diaria" ${tipoAtual==='diaria'?'selected':''}>Diária</option>
+        </select>
+        <button class="btn-sm no" style="font-size:11px;padding:5px 10px;flex:0 0 auto" onclick="window.excluirPagamento('${p.id}','${nome}')">
+          <i class="ti ti-trash"></i>
+        </button>
+      </div>
+    </div>`;
   }).join('');
 };
 
