@@ -1885,31 +1885,55 @@ window.processarExtrato=async function(){
 
     for(const bloco of blocos){
       const trntype=extrairTag(bloco,'TRNTYPE').toUpperCase();
-      // só PIX recebidos (CREDIT ou tipo vazio — algumas corretoras usam CREDIT)
-      if(trntype&&trntype!=='CREDIT'&&!trntype.includes('PIX')) continue;
       const trnamt=parseFloat(extrairTag(bloco,'TRNAMT').replace(',','.'))||0;
-      if(trnamt<=0) continue; // ignora débitos e zeros
 
-      // data: DTPOSTED = YYYYMMDDHHMMSS ou YYYYMMDD
-      const dtRaw=extrairTag(bloco,'DTPOSTED').slice(0,8);
+      // BUG 1 CORRIGIDO: aceita qualquer entrada positiva
+      // PagSeguro usa IN/OUT; outros bancos usam CREDIT/DEBIT
+      // Critério principal: valor positivo (entrada)
+      if(trnamt<=0) continue;
+
+      // data: DTPOSTED = YYYYMMDDHHMMSS[timezone] ou YYYYMMDD
+      const dtRaw=extrairTag(bloco,'DTPOSTED').replace(/\[.*\]/,'').slice(0,8);
       const data=dtRaw.length===8
         ?`${dtRaw.slice(6,8)}/${dtRaw.slice(4,6)}/${dtRaw.slice(0,4)}`
         :dtRaw;
 
-      // campos de identificação: MEMO e NAME (a maioria dos bancos usa ambos)
       const memo=extrairTag(bloco,'MEMO');
       const name=extrairTag(bloco,'NAME');
-      const fitid=extrairTag(bloco,'FITID'); // ID único da transação
+      const fitid=extrairTag(bloco,'FITID');
+
+      // BUG 2+3 CORRIGIDO: extrai nome do pagador do MEMO quando NAME está vazio
+      // PagSeguro não exporta NAME — coloca tudo no MEMO
+      // Padrão: "Pix recebido - NOME" ou "QR Code Pix recebido - NOME"
+      function extrairNomeMemo(memo){
+        // pega tudo após o último " - "
+        const idx=memo.lastIndexOf(' - ');
+        if(idx>=0) return memo.slice(idx+3).trim();
+        return memo.trim();
+      }
+      const nomePagador=name||extrairNomeMemo(memo);
       const textoCompleto=`${memo} ${name}`.toUpperCase();
+
+      // filtra entradas que claramente não são PIX (rendimentos, tarifas etc.)
+      // se não tem nome identificável, ignora
+      const memoLower=memo.toLowerCase();
+      const isPagamento=trntype==='IN'||trntype==='CREDIT'||
+        memoLower.includes('pix')||memoLower.includes('transferencia')||
+        memoLower.includes('ted')||memoLower.includes('doc');
+      // ignora rendimentos de CDB, tarifas etc.
+      const isInterno=memoLower.includes('renda fixa')||memoLower.includes('cdb')||
+        memoLower.includes('rendimento')||memoLower.includes('tarifa')||
+        memoLower.includes('taxa');
+      if(isInterno) continue;
+      if(!isPagamento&&!nomePagador) continue;
 
       // ── Tentativa 1: txid CAL... no MEMO ou NAME ──
       let usuario=null;
       const txMatch=textoCompleto.match(/CAL[A-Z0-9]{4,20}/);
       if(txMatch) usuario=txidMap[txMatch[0]];
 
-      // ── Tentativa 2: nome do pagador ──
-      if(!usuario&&name) usuario=casarNome(name);
-      if(!usuario&&memo) usuario=casarNome(memo);
+      // ── Tentativa 2: nome extraído do MEMO/NAME ──
+      if(!usuario&&nomePagador) usuario=casarNome(nomePagador);
 
       if(usuario){
         const jaSnap=await getDocs(query(collection(db,'pagamentos'),
@@ -1931,7 +1955,13 @@ window.processarExtrato=async function(){
         });
         encontrados.push({usuario,valor:trnamt,data,status:'registrado',fitid});
       }else{
-        naoIdentificados.push({descricao:`${name||''} ${memo||''}`.trim()||'(sem descrição)',valor:trnamt,data,fitid});
+        naoIdentificados.push({
+        descricao:nomePagador||memo||'(sem descrição)',
+        memoCompleto:memo,
+        valor:trnamt,
+        data,
+        fitid
+      });
       }
     }
 
@@ -1962,12 +1992,12 @@ window.processarExtrato=async function(){
       html+=`<div class="card" style="background:#FFF3DC;border-color:#FDDCB5">
         <div style="font-size:13px;font-weight:600;color:#854F0B;margin-bottom:8px">⚠️ ${naoIdentificados.length} não identificado(s)</div>
         ${naoIdentificados.map((n,idx)=>{
-          // lista de membros ordenada para associar manualmente
           const optsHtml=allUsers.filter(u=>u.tipo==='Membro')
             .sort((a,b)=>(a.nomeApresentacao||a.nome).localeCompare(b.nomeApresentacao||b.nome,'pt-BR'))
-            .map(u=>`<option value="${u.uid}|${u.nome.replace(/"/g,'')}">${u.nomeApresentacao||u.nome.split(' ')[0]}</option>`).join('');
+            .map(u=>`<option value="${u.uid}|${u.nome.replace(/"/g,'')}">${u.nomeApresentacao||u.nome.split(' ')[0]} — ${u.nome}</option>`).join('');
           return`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
-            <div style="font-size:12px;color:var(--tx);margin-bottom:6px"><strong>${n.descricao}</strong> · R$ ${n.valor.toFixed(2).replace('.',',')} · ${n.data}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:2px">${n.descricao}</div>
+            <div style="font-size:11px;color:var(--tx2);margin-bottom:6px">${n.memoCompleto} · R$ ${n.valor.toFixed(2).replace('.',',')} · ${n.data}</div>
             <div style="display:flex;gap:6px">
               <select id="selManual${idx}" class="form-control" style="flex:1;font-size:12px;padding:6px 8px">
                 <option value="">Selecione o membro...</option>${optsHtml}
