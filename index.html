@@ -200,18 +200,17 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       </div>
       <div class="page" id="pageMemberInscricoes">
         <div class="sec-header"><div class="sec-title">Minhas inscrições</div></div>
-        <!-- Filtro de período -->
         <div class="form-group" style="margin-bottom:10px">
           <select class="form-control" id="inscricoesPeriodoFiltro" onchange="filtrarInscricoesMembro()" style="font-size:13px">
             <option value="">Todos os períodos</option>
           </select>
         </div>
-        <div class="card" style="background:#FEF0E6;border-color:#FDDCB5;margin-bottom:10px">
+        <!-- Mensalidade -->
+        <div class="card" style="background:#FEF0E6;border-color:#FDDCB5;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><div style="font-size:12px;color:#854F0B;font-weight:500">Total a pagar</div><div style="font-size:22px;font-weight:700;color:var(--or)" id="totalMesInscricoes">R$ 0,00</div></div>
-            <i class="ti ti-cash" style="font-size:32px;color:var(--or);opacity:.4"></i>
+            <div><div style="font-size:12px;color:#854F0B;font-weight:500">Mensalidade</div><div style="font-size:22px;font-weight:700;color:var(--or)" id="totalMesInscricoes">R$ 0,00</div></div>
+            <i class="ti ti-calendar-check" style="font-size:28px;color:var(--or);opacity:.4"></i>
           </div>
-          <!-- botão PIX total -->
           <div id="pixTotalBtn"></div>
         </div>
         <div id="minhasInscricoesList"></div>
@@ -676,6 +675,21 @@ function loading(s){document.getElementById('loadingOverlay').style.display=s?'f
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function formatDate(iso){if(!iso)return'—';const[y,m,d]=iso.split('-');return`${d}/${m}/${y}`;}
+function formatTS(ts){
+  // Firestore Timestamp → DD/MM/YYYY HH:MM
+  if(!ts) return '—';
+  let date;
+  if(ts.toDate) date=ts.toDate();
+  else if(ts.seconds) date=new Date(ts.seconds*1000);
+  else if(typeof ts==='string') date=new Date(ts);
+  else return '—';
+  const d=String(date.getDate()).padStart(2,'0');
+  const m=String(date.getMonth()+1).padStart(2,'0');
+  const y=date.getFullYear();
+  const h=String(date.getHours()).padStart(2,'0');
+  const min=String(date.getMinutes()).padStart(2,'0');
+  return `${d}/${m}/${y} ${h}:${min}`;
+}
 window.closeModal=closeModal;
 
 window.goHome=function(){
@@ -912,11 +926,10 @@ window.confirmarInscricao=async function(){
 async function renderMinhasInscricoes(inscricoes, periodoAtual){
   const el=document.getElementById('minhasInscricoesList');
 
-  // popula o select de períodos
+  // popula select de períodos
   const selPeriodo=document.getElementById('inscricoesPeriodoFiltro');
   const mesesDisp=[...new Set(inscricoes.map(i=>i.jogoMesAno).filter(Boolean))].sort().reverse();
   const periodoNomeAtual=periodoAtual?.nome||'';
-  // mantém seleção atual ou pré-seleciona período vigente
   const selAtual=selPeriodo.value;
   selPeriodo.innerHTML='<option value="">Todos os períodos</option>'+
     mesesDisp.map(m=>`<option value="${m}" ${(selAtual?selAtual===m:m===periodoNomeAtual)?'selected':''}>${m}</option>`).join('');
@@ -924,70 +937,132 @@ async function renderMinhasInscricoes(inscricoes, periodoAtual){
   const filtroMes=selPeriodo.value;
   const inscFiltradas=filtroMes?inscricoes.filter(i=>i.jogoMesAno===filtroMes):inscricoes;
 
-  // total aprovado do período selecionado
-  let total=0;inscFiltradas.forEach(i=>{if(i.status==='Aprovado')total+=Number(i.jogoValor||0);});
-  document.getElementById('totalMesInscricoes').textContent='R$ '+total.toFixed(2).replace('.',',');
+  // separa mensalidade e diárias aprovadas
+  const inscMensalidade=inscFiltradas.filter(i=>i.jogoTipo!=='Diaria');
+  // busca diaristas aprovados do período
+  let diaristasAprovados=[];
+  if(filtroMes||mesesDisp.length===1){
+    const periodo=filtroMes||mesesDisp[0];
+    const diarSnap=await getDocs(query(collection(db,'diaristas'),
+      where('usuarioId','==',currentUID),where('status','==','Aprovado'),where('tipo','==','diarista')));
+    // filtra pelo período do jogo
+    diaristasAprovados=await Promise.all(diarSnap.docs.map(async d=>{
+      const dd=d.data();
+      const jogo=allJogos.find(j=>j.id===dd.jogoId);
+      if(!jogo||jogo.mesAno!==periodo) return null;
+      return {id:d.id,...dd,jogo};
+    }));
+    diaristasAprovados=diaristasAprovados.filter(Boolean);
+  }
 
-  // carrega config PIX e pagamentos já realizados
+  // total mensalidade aprovado
+  let totalMens=0;inscMensalidade.forEach(i=>{if(i.status==='Aprovado')totalMens+=Number(i.jogoValor||0);});
+  // total diárias aprovadas
+  let totalDiarias=diaristasAprovados.reduce((s,d)=>s+Number(d.taxa||0),0);
+
+  document.getElementById('totalMesInscricoes').textContent='R$ '+totalMens.toFixed(2).replace('.',',');
+
+  // pagamentos já realizados
   const pixCfg=await carregarConfigPix();
-
-  // calcula saldo devedor: total das inscrições - pagamentos de mensalidade já registrados
-  // BUG1 FIX: sempre calcula, mesmo sem filtro de período
-  let jaPagei=0;
+  let jaPageiMens=0, jaPageiDiaria=0;
   const periodoParaPagamento=filtroMes||(mesesDisp.length===1?mesesDisp[0]:'');
   if(periodoParaPagamento){
     const pagSnap=await getDocs(query(collection(db,'pagamentos'),
       where('usuarioId','==',currentUID),where('periodo','==',periodoParaPagamento)));
     pagSnap.docs.forEach(d=>{
       const pd=d.data();
-      if(pd.tipo!=='diaria') jaPagei+=Number(pd.valor||0);
+      if(pd.tipo==='diaria') jaPageiDiaria+=Number(pd.valor||0);
+      else jaPageiMens+=Number(pd.valor||0);
     });
   }else{
-    // sem filtro e múltiplos períodos: soma pagamentos de mensalidade de todos os períodos
     const pagSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',currentUID)));
     pagSnap.docs.forEach(d=>{
       const pd=d.data();
-      if(pd.tipo!=='diaria') jaPagei+=Number(pd.valor||0);
+      if(pd.tipo==='diaria') jaPageiDiaria+=Number(pd.valor||0);
+      else jaPageiMens+=Number(pd.valor||0);
     });
   }
-  const saldo=Math.max(0,total-jaPagei);
+  const saldoMens=Math.max(0,totalMens-jaPageiMens);
+  const saldoDiaria=Math.max(0,totalDiarias-jaPageiDiaria);
 
-  // botão PIX para pagar o saldo devedor do período
+  // botão PIX mensalidade
   const pixTotalDiv=document.getElementById('pixTotalBtn');
   if(pixTotalDiv){
-    if(saldo>0&&pixCfg?.chave){
-      const label=filtroMes?`Período ${filtroMes}`:'todas as inscrições';
-      pixTotalDiv.innerHTML=`
-        ${jaPagei>0?`<div style="font-size:12px;color:#0F6E56;margin-top:8px">✅ Já pago: R$ ${jaPagei.toFixed(2).replace('.',',')} · Saldo: R$ ${saldo.toFixed(2).replace('.',',')}</div>`:''}
+    let html='';
+    if(totalMens>0){
+      if(saldoMens>0&&pixCfg?.chave){
+        html+=`${jaPageiMens>0?`<div style="font-size:12px;color:#0F6E56;margin-top:8px">✅ Mensalidade paga: R$ ${jaPageiMens.toFixed(2).replace('.',',')} · Falta: R$ ${saldoMens.toFixed(2).replace('.',',')}</div>`:''}
         <button class="btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:#0F6E56;color:#fff;border-color:#0F6E56"
-          onclick="window.abrirPixTotal(${saldo},'${label}')">
-          <i class="ti ti-brand-whatsapp" style="font-size:14px"></i> PIX saldo · R$ ${saldo.toFixed(2).replace('.',',')}
+          onclick="window.abrirPixTotal(${saldoMens},'${filtroMes||periodoParaPagamento}')">
+          <i class="ti ti-brand-whatsapp" style="font-size:14px"></i> PIX mensalidade · R$ ${saldoMens.toFixed(2).replace('.',',')}
         </button>`;
-    }else if(total>0&&jaPagei>=total){
-      pixTotalDiv.innerHTML=`<div style="background:#E6F7EF;border-radius:9px;padding:10px 14px;margin-top:8px;font-size:13px;color:#0F6E56;font-weight:500;text-align:center">✅ Pagamento em dia! Total pago: R$ ${jaPagei.toFixed(2).replace('.',',')}</div>`;
-    }else{
-      pixTotalDiv.innerHTML='';
+      }else if(jaPageiMens>=totalMens){
+        html+=`<div style="background:#E6F7EF;border-radius:9px;padding:8px 12px;margin-top:8px;font-size:12px;color:#0F6E56;font-weight:500">✅ Mensalidade em dia · R$ ${jaPageiMens.toFixed(2).replace('.',',')}</div>`;
+      }
     }
+    // botão PIX diárias (separado)
+    if(totalDiarias>0&&saldoDiaria>0&&pixCfg?.chave){
+      const periodo=filtroMes||periodoParaPagamento||'';
+      html+=`${jaPageiDiaria>0?`<div style="font-size:12px;color:#854F0B;margin-top:8px">⚠️ Diárias pagas: R$ ${jaPageiDiaria.toFixed(2).replace('.',',')} · Falta: R$ ${saldoDiaria.toFixed(2).replace('.',',')}</div>`:''}
+      <button class="btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:#854F0B;color:#fff;border-color:#854F0B"
+        onclick="window.abrirPixDiariaTotal(${saldoDiaria},'${periodo}')">
+        <i class="ti ti-brand-whatsapp" style="font-size:14px"></i> PIX diárias · R$ ${saldoDiaria.toFixed(2).replace('.',',')}
+      </button>`;
+    }else if(totalDiarias>0&&jaPageiDiaria>=totalDiarias){
+      html+=`<div style="background:#FFF3DC;border-radius:9px;padding:8px 12px;margin-top:8px;font-size:12px;color:#854F0B;font-weight:500">✅ Diárias pagas · R$ ${jaPageiDiaria.toFixed(2).replace('.',',')}</div>`;
+    }
+    pixTotalDiv.innerHTML=html;
   }
 
-  if(!inscFiltradas.length){
+  if(!inscFiltradas.length&&!diaristasAprovados.length){
     el.innerHTML=filtroMes
       ?`<div class="empty"><i class="ti ti-calendar-x"></i><p>Nenhuma inscrição no período ${filtroMes}.</p></div>`
       :'<div class="empty"><i class="ti ti-calendar-x"></i><p>Você não tem inscrições ainda.</p></div>';
     return;
   }
 
-  el.innerHTML=inscFiltradas.map(i=>{
-    const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
-    const p=i.jogoTipo==='Dupla'&&i.parceiroNome?`<div style="font-size:11px;color:var(--tx2);margin-top:3px">👥 com ${i.parceiroNome.split(' ')[0]}</div>`:'';
-    const cancelBtn=i.status==='Pendente'
-      ?`<button class="btn-sm no" style="margin-top:10px;font-size:12px;width:100%;justify-content:center" onclick="window.cancelarInscricao('${i.id}','${i.jogoNome}')"><i class="ti ti-x"></i> Cancelar inscrição</button>`:'';
-    return `<div class="card">
-      <div class="card-row"><div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div>${p}</div><span class="badge ${bc}">${i.status}</span></div>
-      <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div>
-      ${cancelBtn}
-    </div>`;
-  }).join('');
+  let html='';
+
+  // ── INSCRIÇÕES MENSAIS ──
+  if(inscFiltradas.length){
+    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Inscrições mensais (${inscFiltradas.length})</div>`;
+    html+=inscFiltradas.map(i=>{
+      const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
+      const p=i.jogoTipo==='Dupla'&&i.parceiroNome?`<div style="font-size:11px;color:var(--tx2);margin-top:2px">👥 com ${i.parceiroNome.split(' ')[0]}</div>`:'';
+      // item 4: data e hora da solicitação
+      const dataSolic=i.criadoEm?`<div style="font-size:10px;color:var(--tx2);margin-top:3px"><i class="ti ti-clock" style="font-size:10px"></i> Solicitado em ${formatTS(i.criadoEm)}</div>`:'';
+      const cancelBtn=i.status==='Pendente'
+        ?`<button class="btn-sm no" style="margin-top:8px;font-size:12px;width:100%;justify-content:center" onclick="window.cancelarInscricao('${i.id}','${i.jogoNome}')"><i class="ti ti-x"></i> Cancelar</button>`:'';
+      return `<div class="card" style="margin-bottom:8px">
+        <div class="card-row"><div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div>${p}${dataSolic}</div><span class="badge ${bc}">${i.status}</span></div>
+        <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div>
+        ${cancelBtn}
+      </div>`;
+    }).join('');
+  }
+
+  // ── DIÁRIAS APROVADAS ──
+  if(diaristasAprovados.length){
+    html+=`<div style="font-size:11px;font-weight:600;color:#854F0B;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Diárias aprovadas (${diaristasAprovados.length})</div>`;
+    html+=diaristasAprovados.map(d=>{
+      const taxa=Number(d.taxa||0);
+      // item 3: data e hora da solicitação de diária
+      const dataSolic=d.criadoEm?`<div style="font-size:10px;color:var(--tx2);margin-top:3px"><i class="ti ti-clock" style="font-size:10px"></i> Solicitado em ${formatTS(d.criadoEm)}</div>`:'';
+      return`<div class="card" style="border-left:3px solid #EF9F27;padding-left:13px;margin-bottom:8px">
+        <div class="card-row">
+          <div>
+            <div class="card-title">${d.jogo?.nome||'Jogo'}</div>
+            <div class="card-sub">${d.jogo?.dia||''} · ${d.jogo?.nivel||''} · ${d.jogo?.mesAno||''}</div>
+            ${dataSolic}
+          </div>
+          <span class="badge bg">Aprovado</span>
+        </div>
+        <div class="valor-box" style="background:#FFF3DC"><span class="valor-label" style="color:#854F0B">Taxa de diária</span><span class="valor-num" style="color:#854F0B">R$ ${taxa.toFixed(2).replace('.',',')}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  el.innerHTML=html;
 }
 
 // filtra inscrições sem recarregar do Firebase
@@ -999,6 +1074,34 @@ window.filtrarInscricoesMembro=async function(){
 };
 
 // PIX para o total do período — Fix 3: garante que o total é do período selecionado
+// PIX total diárias do período
+window.abrirPixDiariaTotal=async function(total,periodo){
+  const cfg=await carregarConfigPix();
+  if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
+  const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
+  const periodoCode=(periodo||'').replace('/','');
+  const txid=('CALD'+apelido+(periodoCode||Date.now().toString(36).slice(-4))).toUpperCase().slice(0,25);
+  const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',total,txid);
+  document.getElementById('modalPixContent').innerHTML=`
+    <div class="card" style="background:#FFF3DC;text-align:center;margin-bottom:14px">
+      <div style="font-size:12px;color:#854F0B;margin-bottom:4px">Total de diárias — ${periodo||''}</div>
+      <div style="font-size:28px;font-weight:700;color:#854F0B">R$ ${total.toFixed(2).replace('.',',')}</div>
+      <div style="font-size:11px;color:#854F0B;margin-top:4px">Identificação: <strong>${txid}</strong></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
+    <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
+    <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#854F0B;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="ti ti-copy"></i> Copiar código PIX
+    </button>
+    <div style="background:#FFF3DC;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:12px;color:#854F0B;line-height:1.5">
+      <strong>💡 Identificação no extrato:</strong> ${txid}<br>
+      Abra o banco → PIX → Pagar → Copia e Cola
+    </div>`;
+  document.getElementById('modalPix').classList.add('open');
+};
+
 window.abrirPixTotal=async function(total,label){
   const cfg=await carregarConfigPix();
   if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
@@ -2137,7 +2240,7 @@ window.aplicarFiltrosMembros=function(){
   if(badge)badge.textContent=membros.length===total?String(total):`${membros.length} de ${total}`;
   if(!total){el.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro cadastrado.</p></div>';return;}
   if(!membros.length){el.innerHTML='<div class="empty"><i class="ti ti-search"></i><p>Nenhum membro encontrado com os filtros aplicados.</p></div>';return;}
-  el.innerHTML=membros.map(u=>`<div class="card" style="cursor:pointer" onclick="window.verMembro('${u.uid}')"><div class="card-row"><div style="display:flex;align-items:center;gap:11px"><div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div><div><div class="card-title">${u.nome}${u.nomeApresentacao?` <span style="font-size:12px;color:var(--or);font-weight:400">(${u.nomeApresentacao})</span>`:''}</div><div class="card-sub">${u.email}</div></div></div><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></div><div class="card-meta"><span class="badge bb">${u.nivel}</span><span class="badge bgy">${u.telefone||'—'}</span></div></div>`).join('');
+  el.innerHTML=membros.map(u=>`<div class="card" style="cursor:pointer" onclick="window.verMembro('${u.uid}')"><div class="card-row"><div style="display:flex;align-items:center;gap:11px"><div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div><div><div class="card-title">${u.nome}${u.nomeApresentacao?` <span style="font-size:12px;color:var(--or);font-weight:400">(${u.nomeApresentacao})</span>`:''}</div><div class="card-sub">${u.email}</div>${u.criadoEm?`<div style="font-size:10px;color:var(--tx2);margin-top:2px"><i class="ti ti-calendar-plus" style="font-size:10px"></i> Cadastro: ${formatTS(u.criadoEm)}</div>`:''}</div></div><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></div><div class="card-meta"><span class="badge bb">${u.nivel}</span><span class="badge bgy">${u.telefone||'—'}</span></div></div>`).join('');
 };
 // alias para compatibilidade com chamadas internas
 function renderUsuariosGerente(){window.aplicarFiltrosMembros();}
