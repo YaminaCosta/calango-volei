@@ -479,93 +479,107 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
 
       <!-- CONCILIAÇÃO DE PAGAMENTOS -->
       <div class="page" id="pageGerenteConciliacao">
-        <div class="sec-header"><div class="sec-title">Conciliação de pagamentos</div></div>
-        <div class="card" style="background:#E8F3FE;border-color:#B5D4F4;margin-bottom:14px">
-          <div style="font-size:12px;color:#185FA5;line-height:1.6">
-            <strong>Como funciona:</strong> o membro gera o PIX com código <strong>CAL{APELIDO}{MMAAAA}</strong> (ex: <code>CALTAMIRIS062026</code>). Você exporta o extrato do banco no formato <strong>OFX</strong> (padrão universal — todos os bancos suportam), importa aqui e o sistema identifica automaticamente quem pagou. Para membros não identificados automaticamente, você associa manualmente. Membros com pagamento confirmado aparecem na Lista do Dia.
-          </div>
-        </div>
-        <div class="card" style="margin-bottom:12px">
-          <div class="form-group">
-            <label class="form-label">Período de referência</label>
-            <select class="form-control" id="concilPeriodo" style="font-size:13px">
-              <option value="">Selecione o período...</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tipo de pagamento no extrato</label>
-            <select class="form-control" id="concilTipoPagamento" style="font-size:13px">
-              <option value="mensalidade">Mensalidade (inscrições do período)</option>
-              <option value="diaria">Diária (pagamento avulso por jogo)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Arquivo OFX do extrato bancário</label>
-            <input type="file" class="form-control" id="concilFile" accept=".ofx,.OFX" style="font-size:13px;padding:8px">
-          </div>
-          <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="window.processarExtrato()">
-            <i class="ti ti-file-import"></i> Processar extrato OFX
-          </button>
-        </div>
-        <div id="concilResultado"></div>
+        <div class="sec-header"><div class="sec-title">Pagamentos</div></div>
 
-        <!-- REGISTRO MANUAL -->
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Registrar pagamento manualmente</div>
-        <div class="card" style="margin-bottom:12px">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Membro</label>
-              <select class="form-control" id="manualMembro" style="font-size:13px">
-                <option value="">Selecione...</option>
-              </select>
+        <!-- abas internas -->
+        <div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:14px">
+          <button id="tabPagManual" onclick="switchPagTab('manual')" style="flex:1;padding:8px 4px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)"><i class="ti ti-pencil" style="font-size:13px"></i> Manual</button>
+          <button id="tabPagOFX"    onclick="switchPagTab('ofx')"    style="flex:1;padding:8px 4px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)"><i class="ti ti-file-import" style="font-size:13px"></i> OFX</button>
+          <button id="tabPagLista"  onclick="switchPagTab('lista')"  style="flex:1;padding:8px 4px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)"><i class="ti ti-list" style="font-size:13px"></i> Registros</button>
+        </div>
+
+        <!-- ABA MANUAL -->
+        <div id="pagTabManual">
+          <div class="card" style="margin-bottom:12px">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Membro</label>
+                <select class="form-control" id="manualMembro" style="font-size:13px">
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Período</label>
+                <select class="form-control" id="manualPeriodo" style="font-size:13px">
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Período</label>
-              <select class="form-control" id="manualPeriodo" style="font-size:13px">
-                <option value="">Selecione...</option>
-              </select>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Tipo</label>
+                <select class="form-control" id="manualTipo" style="font-size:13px">
+                  <option value="mensalidade">Mensalidade</option>
+                  <option value="diaria">Diária</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Valor (R$)</label>
+                <input class="form-control" id="manualValor" type="number" step="0.01" min="0" placeholder="0,00" style="font-size:13px">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Data</label>
+                <input class="form-control" id="manualData" type="date" style="font-size:13px">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Observação (opcional)</label>
+                <input class="form-control" id="manualObs" placeholder="Ex: Dinheiro em mãos" style="font-size:13px">
+              </div>
+            </div>
+            <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:8px" onclick="window.salvarPagamentoManual()">
+              <i class="ti ti-device-floppy"></i> Salvar pagamento
+            </button>
+          </div>
+        </div>
+
+        <!-- ABA OFX -->
+        <div id="pagTabOFX" style="display:none">
+          <div class="card" style="background:#E8F3FE;border-color:#B5D4F4;margin-bottom:12px">
+            <div style="font-size:12px;color:#185FA5;line-height:1.6">
+              Exporte o extrato do banco em formato <strong>OFX</strong>, selecione o período e processe. O sistema identifica os pagadores automaticamente pelo código PIX ou pelo nome.
             </div>
           </div>
-          <div class="form-row">
+          <div class="card" style="margin-bottom:12px">
             <div class="form-group">
-              <label class="form-label">Tipo</label>
-              <select class="form-control" id="manualTipo" style="font-size:13px">
+              <label class="form-label">Período de referência</label>
+              <select class="form-control" id="concilPeriodo" style="font-size:13px">
+                <option value="">Selecione o período...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo de pagamento</label>
+              <select class="form-control" id="concilTipoPagamento" style="font-size:13px">
                 <option value="mensalidade">Mensalidade</option>
                 <option value="diaria">Diária</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Valor (R$)</label>
-              <input class="form-control" id="manualValor" type="number" step="0.01" min="0" placeholder="0,00" style="font-size:13px">
+              <label class="form-label">Arquivo OFX</label>
+              <input type="file" class="form-control" id="concilFile" accept=".ofx,.OFX" style="font-size:13px;padding:8px">
             </div>
+            <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="window.processarExtrato()">
+              <i class="ti ti-file-import"></i> Processar extrato OFX
+            </button>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Data do pagamento</label>
-              <input class="form-control" id="manualData" type="date" style="font-size:13px">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Observação (opcional)</label>
-              <input class="form-control" id="manualObs" placeholder="Ex: Dinheiro em mãos" style="font-size:13px">
-            </div>
-          </div>
-          <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:4px" onclick="window.salvarPagamentoManual()">
-            <i class="ti ti-plus"></i> Registrar pagamento
-          </button>
+          <div id="concilResultado"></div>
         </div>
 
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Pagamentos registrados</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <select class="form-control" id="concilFiltroMes" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
-            <option value="">Todos os períodos</option>
-          </select>
-          <select class="form-control" id="concilFiltroTipo" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
-            <option value="">Todos os tipos</option>
-            <option value="mensalidade">Mensalidade</option>
-            <option value="diaria">Diária</option>
-          </select>
+        <!-- ABA REGISTROS -->
+        <div id="pagTabLista" style="display:none">
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <select class="form-control" id="concilFiltroMes" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
+              <option value="">Todos os períodos</option>
+            </select>
+            <select class="form-control" id="concilFiltroTipo" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
+              <option value="">Todos os tipos</option>
+              <option value="mensalidade">Mensalidade</option>
+              <option value="diaria">Diária</option>
+            </select>
+          </div>
+          <div id="pagamentosRegistradosList"></div>
         </div>
-        <div id="pagamentosRegistradosList"></div>
       </div>
     </div>
     <div class="bottomnav" id="gerenteNav">
@@ -2038,6 +2052,16 @@ window.inativarMembro=async function(uid){const u=allUsers.find(x=>x.uid===uid);
 // ══ CONCILIAÇÃO DE PAGAMENTOS ══
 
 // Inicializa tela de conciliação
+window.switchPagTab=function(tab){
+  ['manual','ofx','lista'].forEach(t=>{
+    const btn=document.getElementById('tabPag'+t.charAt(0).toUpperCase()+t.slice(1));
+    const panel=document.getElementById('pagTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn){btn.style.background=tab===t?'#fff':'transparent';btn.style.color=tab===t?'var(--tx)':'var(--tx2)';}
+    if(panel) panel.style.display=tab===t?'block':'none';
+  });
+  if(tab==='lista') window.renderPagamentosRegistrados();
+};
+
 async function initConciliacao(){
   const sel=document.getElementById('concilPeriodo');
   const selFiltro=document.getElementById('concilFiltroMes');
@@ -2046,26 +2070,31 @@ async function initConciliacao(){
 
   const meses=[...new Set(allPeriodos.map(p=>p.nome).filter(Boolean))].sort().reverse();
   const opsMeses='<option value="">Selecione o período...</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
-  sel.innerHTML=opsMeses;
-  selFiltro.innerHTML='<option value="">Todos os períodos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(sel) sel.innerHTML=opsMeses;
+  if(selFiltro) selFiltro.innerHTML='<option value="">Todos os períodos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
   if(selManualPeriodo) selManualPeriodo.innerHTML=opsMeses;
 
   // pré-seleciona período vigente
   const pv=periodoVigente();
-  if(pv){sel.value=pv.nome;if(selManualPeriodo)selManualPeriodo.value=pv.nome;}
+  if(pv){
+    if(sel) sel.value=pv.nome;
+    if(selManualPeriodo) selManualPeriodo.value=pv.nome;
+  }
 
-  // popula membros no form manual
+  // popula membros no form manual ordenado por apelido
   if(selManualMembro){
     const membros=allUsers.filter(u=>u.tipo==='Membro'&&u.status==='Ativo')
       .sort((a,b)=>(a.nomeApresentacao||a.nome).localeCompare(b.nomeApresentacao||b.nome,'pt-BR'));
     selManualMembro.innerHTML='<option value="">Selecione o membro...</option>'+
       membros.map(u=>`<option value="${u.uid}|${u.nome}">${u.nomeApresentacao||u.nome.split(' ')[0]} — ${u.nome}</option>`).join('');
   }
+
   // data padrão = hoje
   const manualData=document.getElementById('manualData');
   if(manualData&&!manualData.value) manualData.value=new Date().toISOString().slice(0,10);
 
-  await renderPagamentosRegistrados();
+  // abre na aba Manual por padrão
+  window.switchPagTab('manual');
 }
 
 window.salvarPagamentoManual=async function(){
@@ -2100,7 +2129,7 @@ window.salvarPagamentoManual=async function(){
   document.getElementById('manualObs').value='';
   loading(false);
   showToast('✅ Pagamento registrado!');
-  await renderPagamentosRegistrados();
+  window.switchPagTab('lista');
 };
 
 // Registra pagamento manualmente se necessário (legado)
