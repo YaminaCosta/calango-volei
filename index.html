@@ -851,18 +851,34 @@ async function renderMinhasInscricoes(inscricoes, periodoAtual){
   let total=0;inscFiltradas.forEach(i=>{if(i.status==='Aprovado')total+=Number(i.jogoValor||0);});
   document.getElementById('totalMesInscricoes').textContent='R$ '+total.toFixed(2).replace('.',',');
 
-  // carrega config PIX
+  // carrega config PIX e pagamentos já realizados
   const pixCfg=await carregarConfigPix();
 
-  // botão PIX para pagar o total do período
+  // calcula saldo devedor: total das inscrições - pagamentos de mensalidade já registrados
+  let jaPagei=0;
+  if(filtroMes){
+    const pagSnap=await getDocs(query(collection(db,'pagamentos'),
+      where('usuarioId','==',currentUID),where('periodo','==',filtroMes)));
+    pagSnap.docs.forEach(d=>{
+      const pd=d.data();
+      if(pd.tipo!=='diaria') jaPagei+=Number(pd.valor||0);
+    });
+  }
+  const saldo=Math.max(0,total-jaPagei);
+
+  // botão PIX para pagar o saldo devedor do período
   const pixTotalDiv=document.getElementById('pixTotalBtn');
   if(pixTotalDiv){
-    if(total>0&&pixCfg?.chave){
+    if(saldo>0&&pixCfg?.chave){
       const label=filtroMes?`Período ${filtroMes}`:'todas as inscrições';
-      pixTotalDiv.innerHTML=`<button class="btn-sm" style="margin-top:10px;width:100%;justify-content:center;background:#0F6E56;color:#fff;border-color:#0F6E56"
-        onclick="window.abrirPixTotal(${total},'${label}')">
-        <i class="ti ti-brand-whatsapp" style="font-size:14px"></i> PIX total · R$ ${total.toFixed(2).replace('.',',')}
-      </button>`;
+      pixTotalDiv.innerHTML=`
+        ${jaPagei>0?`<div style="font-size:12px;color:#0F6E56;margin-top:8px">✅ Já pago: R$ ${jaPagei.toFixed(2).replace('.',',')} · Saldo: R$ ${saldo.toFixed(2).replace('.',',')}</div>`:''}
+        <button class="btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:#0F6E56;color:#fff;border-color:#0F6E56"
+          onclick="window.abrirPixTotal(${saldo},'${label}')">
+          <i class="ti ti-brand-whatsapp" style="font-size:14px"></i> PIX saldo · R$ ${saldo.toFixed(2).replace('.',',')}
+        </button>`;
+    }else if(total>0&&jaPagei>=total){
+      pixTotalDiv.innerHTML=`<div style="background:#E6F7EF;border-radius:9px;padding:10px 14px;margin-top:8px;font-size:13px;color:#0F6E56;font-weight:500;text-align:center">✅ Pagamento em dia! Total pago: R$ ${jaPagei.toFixed(2).replace('.',',')}</div>`;
     }else{
       pixTotalDiv.innerHTML='';
     }
@@ -1415,7 +1431,8 @@ window.carregarInfoDiaMembro=async function(){
     const minhaInsc=inscSnap.docs.map(d=>d.data()).find(i=>i.usuarioId===currentUID)||null;
     const minhaConf=confSnap.docs.find(d=>d.data().usuarioId===currentUID);
     const meuConfObj=minhaConf?{id:minhaConf.id,...minhaConf.data()}:null;
-    const meuDiarista=diarSnap.docs.find(d=>d.data().usuarioId===currentUID);
+    // FIX: filtra apenas docs de tipo 'diarista' (exclui confirmações de presença tipo 'membro')
+    const meuDiarista=diarSnap.docs.find(d=>d.data().usuarioId===currentUID&&d.data().tipo==='diarista');
     const meuRegistro=meuDiarista?{id:meuDiarista.id,...meuDiarista.data()}:null;
     loading(false);
     const panel=document.getElementById('diaristaMemberPanel');
@@ -1851,6 +1868,17 @@ window.excluirPagamento=async function(id,nome){
   loading(false);
 };
 
+window.editarTipoPagamento=async function(id,tipoAtual){
+  const novoTipo=tipoAtual==='mensalidade'?'diaria':'mensalidade';
+  const label=novoTipo==='diaria'?'Diária':'Mensalidade';
+  if(!confirm(`Alterar tipo para "${label}"?`))return;
+  loading(true);
+  await updateDoc(doc(db,'pagamentos',id),{tipo:novoTipo});
+  showToast(`✅ Tipo alterado para ${label}!`);
+  await renderPagamentosRegistrados();
+  loading(false);
+};
+
 window.renderPagamentosRegistrados=async function(){
   const filtroMes=document.getElementById('concilFiltroMes')?.value||'';
   const filtroTipo=document.getElementById('concilFiltroTipo')?.value||'';
@@ -1872,7 +1900,10 @@ window.renderPagamentosRegistrados=async function(){
       <div class="card-title">${nome} ${tipoBadge(p.tipo)}</div>
       <div class="card-sub">${p.periodo} · ${p.data||''} · ${origemLabel}</div>
     </div><span class="badge bg">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span></div>
-    <button class="btn-sm no" style="margin-top:8px;font-size:11px" onclick="window.excluirPagamento('${p.id}','${nome}')"><i class="ti ti-trash"></i> Remover</button></div>`;
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn-sm blue" style="flex:1;font-size:11px;justify-content:center" onclick="window.editarTipoPagamento('${p.id}','${p.tipo||'mensalidade'}')"><i class="ti ti-edit"></i> Alterar tipo</button>
+      <button class="btn-sm no" style="flex:1;font-size:11px;justify-content:center" onclick="window.excluirPagamento('${p.id}','${nome}')"><i class="ti ti-trash"></i> Remover</button>
+    </div></div>`;
   }).join('');
 };
 
