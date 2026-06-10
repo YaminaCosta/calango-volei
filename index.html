@@ -379,14 +379,16 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             <input type="number" id="relAno" value="2026" min="2024" max="2030" style="width:80px">
             <button class="btn-sm pr" onclick="gerarRelatorio()"><i class="ti ti-search"></i></button>
           </div>
-          <div style="display:none" id="relTabs"><div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px">
-            <button id="tabRelJogo" onclick="switchRelTab('jogo')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">Por jogo</button>
-            <button id="tabRelMatriz" onclick="switchRelTab('matriz')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">Membros × Dias</button>
-            <button id="tabRelOcupacao" onclick="switchRelTab('ocupacao')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">Nível × Dia</button>
+          <div style="display:none" id="relTabs"><div style="display:flex;background:var(--sur2);border-radius:9px;padding:3px;gap:3px;margin-bottom:12px;flex-wrap:wrap">
+            <button id="tabRelJogo"      onclick="switchRelTab('jogo')"      style="flex:1;min-width:60px;padding:7px 4px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">Por jogo</button>
+            <button id="tabRelMatriz"    onclick="switchRelTab('matriz')"    style="flex:1;min-width:60px;padding:7px 4px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">M × Dias</button>
+            <button id="tabRelOcupacao"  onclick="switchRelTab('ocupacao')"  style="flex:1;min-width:60px;padding:7px 4px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">Nível × Dia</button>
+            <button id="tabRelDevedores" onclick="switchRelTab('devedores')" style="flex:1;min-width:60px;padding:7px 4px;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">Devedores</button>
           </div></div>
           <div id="relatorioContent"><div class="empty"><i class="ti ti-report"></i><p>Selecione o mês e clique em pesquisar</p></div></div>
-          <div id="relatorioMatriz" style="display:none"></div>
-          <div id="relatorioOcupacao" style="display:none"></div>
+          <div id="relatorioMatriz"    style="display:none"></div>
+          <div id="relatorioOcupacao"  style="display:none"></div>
+          <div id="relatorioDevedores" style="display:none"></div>
         </div>
       </div>
       <div class="page" id="pageGerenteJogos">
@@ -1878,7 +1880,17 @@ window.confirmarNovoPeriodo=async function(){const nome=document.getElementById(
 window.togglePeriodo=async function(id){const p=allPeriodos.find(x=>x.id===id);const n=p.status==='Aberto'?'Fechado':'Aberto';loading(true);await updateDoc(doc(db,'periodos',id),{status:n});p.status=n;showToast(n==='Aberto'?'✅ Período aberto!':'✅ Período fechado.');await renderPeriodosGerente();loading(false);};
 
 // RELATÓRIO
-window.switchRelTab=function(tab){['jogo','matriz','ocupacao'].forEach(t=>{const btn=document.getElementById('tabRel'+t.charAt(0).toUpperCase()+t.slice(1));if(btn){btn.style.background=tab===t?'#fff':'transparent';btn.style.color=tab===t?'var(--tx)':'var(--tx2)';}});document.getElementById('relatorioContent').style.display=tab==='jogo'?'block':'none';document.getElementById('relatorioMatriz').style.display=tab==='matriz'?'block':'none';document.getElementById('relatorioOcupacao').style.display=tab==='ocupacao'?'block':'none';};
+window.switchRelTab=function(tab){
+  ['jogo','matriz','ocupacao','devedores'].forEach(t=>{
+    const id='tabRel'+t.charAt(0).toUpperCase()+t.slice(1);
+    const btn=document.getElementById(id);
+    if(btn){btn.style.background=tab===t?'#fff':'transparent';btn.style.color=tab===t?'var(--tx)':'var(--tx2)';}
+  });
+  document.getElementById('relatorioContent').style.display=   tab==='jogo'?'block':'none';
+  document.getElementById('relatorioMatriz').style.display=    tab==='matriz'?'block':'none';
+  document.getElementById('relatorioOcupacao').style.display=  tab==='ocupacao'?'block':'none';
+  document.getElementById('relatorioDevedores').style.display= tab==='devedores'?'block':'none';
+};
 // Ordem canônica dos dias da semana
 const ORDEM_DIA={'Domingo':0,'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,'Sexta':5,'Sábado':6};
 function sortJogosPorDia(jogos){
@@ -1995,7 +2007,113 @@ window.gerarRelatorio=async function(){
     document.getElementById('relatorioOcupacao').innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Nível × dia — <strong>${mesAno}</strong></div><div style="overflow-x:auto"><table class="rel-table" style="min-width:100%"><thead><tr><th style="min-width:100px">Nível</th>${thDias}<th style="text-align:center">Total</th></tr></thead><tbody>${ocupR}</tbody><tfoot><tr style="background:var(--sur2)"><td style="font-weight:700;font-size:12px">Total</td>${totD}<td style="text-align:center;font-weight:700;color:var(--or)">${_relInscs.length}</td></tr></tfoot></table></div>`;
   }
 
+  // ══ RELATÓRIO DEVEDORES ══
+  {
+    const pagSnap=await getDocs(query(collection(db,'pagamentos'),where('periodo','==',mesAno)));
+    const pagMensalidadeMap={},pagDiariaMap={};
+    pagSnap.docs.forEach(d=>{
+      const p=d.data();
+      if(p.tipo==='diaria') pagDiariaMap[p.usuarioId]=(pagDiariaMap[p.usuarioId]||0)+Number(p.valor||0);
+      else pagMensalidadeMap[p.usuarioId]=(pagMensalidadeMap[p.usuarioId]||0)+Number(p.valor||0);
+    });
+
+    const devedoresMap={};
+    _relInscs.forEach(i=>{
+      if(!devedoresMap[i.usuarioId]){
+        const u=allUsers.find(x=>x.uid===i.usuarioId);
+        devedoresMap[i.usuarioId]={uid:i.usuarioId,nome:u?.nomeApresentacao||i.usuarioNome.split(' ')[0],nivel:u?.nivel||'',totalDevido:0,jogos:[]};
+      }
+      devedoresMap[i.usuarioId].totalDevido+=Number(i.jogoValor||0);
+      devedoresMap[i.usuarioId].jogos.push(i.jogoNome);
+    });
+
+    const semPag=[],parcial=[],quitado=[];
+    Object.values(devedoresMap).forEach(m=>{
+      const pago=pagMensalidadeMap[m.uid]||0;
+      const saldo=m.totalDevido-pago;
+      if(pago<=0) semPag.push({...m,pago,saldo:m.totalDevido});
+      else if(saldo>0.01) parcial.push({...m,pago,saldo});
+      else quitado.push({...m,pago,saldo:0});
+    });
+    semPag.sort((a,b)=>b.saldo-a.saldo);
+    parcial.sort((a,b)=>b.saldo-a.saldo);
+    quitado.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+
+    const totalAberto=[...semPag,...parcial].reduce((s,m)=>s+m.saldo,0);
+    const totalArrecadado=Object.values(pagMensalidadeMap).reduce((s,v)=>s+v,0);
+    const totalPrevisto=Object.values(devedoresMap).reduce((s,m)=>s+m.totalDevido,0);
+
+    let html=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+        <div class="stat"><div class="stat-n" style="color:#A32D2D;font-size:18px">${semPag.length+parcial.length}</div><div class="stat-l">Em aberto</div></div>
+        <div class="stat"><div class="stat-n" style="color:#0F6E56;font-size:18px">${quitado.length}</div><div class="stat-l">Quitados</div></div>
+        <div class="stat"><div class="stat-n" style="color:var(--or);font-size:13px">R$ ${totalAberto.toFixed(2).replace('.',',')}</div><div class="stat-l">Total em aberto</div></div>
+      </div>
+      <div class="rel-total" style="margin-bottom:14px">
+        <span>Arrecadado ${mesAno}</span>
+        <span>R$ ${totalArrecadado.toFixed(2).replace('.',',')} / R$ ${totalPrevisto.toFixed(2).replace('.',',')}</span>
+      </div>`;
+
+    if(semPag.length){
+      html+=`<div style="font-size:11px;font-weight:600;color:#A32D2D;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Sem pagamento (${semPag.length})</div>`;
+      html+=semPag.map(m=>`<div class="card" style="border-left:3px solid #A32D2D;padding-left:13px;margin-bottom:8px">
+        <div class="card-row"><div><div class="card-title">${m.nome} <span class="badge bgy" style="font-size:10px">${m.nivel}</span></div><div class="card-sub" style="font-size:11px">${m.jogos.join(' · ')}</div></div>
+        <div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#A32D2D">R$ ${m.saldo.toFixed(2).replace('.',',')}</div><div style="font-size:10px;color:var(--tx2)">em aberto</div></div></div>
+      </div>`).join('');
+    }
+
+    if(parcial.length){
+      html+=`<div style="font-size:11px;font-weight:600;color:#854F0B;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Pagamento parcial (${parcial.length})</div>`;
+      html+=parcial.map(m=>`<div class="card" style="border-left:3px solid #EF9F27;padding-left:13px;margin-bottom:8px">
+        <div class="card-row"><div><div class="card-title">${m.nome} <span class="badge bgy" style="font-size:10px">${m.nivel}</span></div>
+        <div class="card-sub" style="font-size:11px">Pago: R$ ${m.pago.toFixed(2).replace('.',',')} · Devido: R$ ${m.totalDevido.toFixed(2).replace('.',',')}</div></div>
+        <div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#854F0B">R$ ${m.saldo.toFixed(2).replace('.',',')}</div><div style="font-size:10px;color:var(--tx2)">falta pagar</div></div></div>
+      </div>`).join('');
+    }
+
+    if(quitado.length){
+      html+=`<div style="font-size:11px;font-weight:600;color:#0F6E56;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Pagamento em dia (${quitado.length})</div>
+      <div class="card" style="padding:0;overflow:hidden">`;
+      html+=quitado.map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bd)">
+        <span style="font-size:13px;font-weight:500">${m.nome} <span class="badge bgy" style="font-size:10px">${m.nivel}</span></span>
+        <span style="font-size:12px;color:#0F6E56;font-weight:600">✅ R$ ${m.pago.toFixed(2).replace('.',',')}</span>
+      </div>`).join('');
+      html+=`</div>`;
+    }
+
+    if(!semPag.length&&!parcial.length&&!quitado.length)
+      html+='<div class="empty"><i class="ti ti-circle-check"></i><p>Nenhuma inscrição aprovada em '+mesAno+'</p></div>';
+
+    html+=`<button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:14px" onclick="window.exportarDevedoresCSV('${mesAno}')">
+      <i class="ti ti-download"></i> Exportar CSV devedores
+    </button>`;
+
+    document.getElementById('relatorioDevedores').innerHTML=html;
+  }
+
   loading(false);
+};
+window.exportarDevedoresCSV=async function(mesAno){
+  const[inscSnap,pagSnap]=await Promise.all([
+    getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado'))),
+    getDocs(query(collection(db,'pagamentos'),where('periodo','==',mesAno)))
+  ]);
+  const pagMap={};
+  pagSnap.docs.forEach(d=>{const p=d.data();if(p.tipo!=='diaria')pagMap[p.usuarioId]=(pagMap[p.usuarioId]||0)+Number(p.valor||0);});
+  const devidoMap={};
+  inscSnap.docs.forEach(d=>{const i=d.data();if(!devidoMap[i.usuarioId]){const u=allUsers.find(x=>x.uid===i.usuarioId);devidoMap[i.usuarioId]={nome:u?.nomeApresentacao||i.usuarioNome.split(' ')[0],nomeCompleto:u?.nome||i.usuarioNome,nivel:u?.nivel||'',totalDevido:0,uid:i.usuarioId};}devidoMap[i.usuarioId].totalDevido+=Number(i.jogoValor||0);});
+  const rows=[['Apelido','Nome completo','Nível','Total devido (R$)','Total pago (R$)','Saldo (R$)','Situação']];
+  Object.values(devidoMap).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).forEach(m=>{
+    const pago=pagMap[m.uid]||0;
+    const saldo=m.totalDevido-pago;
+    const sit=pago<=0?'Sem pagamento':saldo>0.01?'Parcial':'Quitado';
+    rows.push([m.nome,m.nomeCompleto,m.nivel,m.totalDevido.toFixed(2),pago.toFixed(2),Math.max(0,saldo).toFixed(2),sit]);
+  });
+  const csv=rows.map(r=>r.join(';')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`calango_devedores_${mesAno.replace('/','_')}.csv`;a.click();
+  showToast('✅ CSV exportado!');
 };
 window.exportarCSV=async function(mesAno){const snap=await getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado')));const rows=[['Nome','Jogo','Mês/Ano','Valor (R$)','Status']];snap.docs.forEach(d=>{const i=d.data();rows.push([i.usuarioNome,i.jogoNome,i.jogoMesAno,i.jogoValor||0,'Aprovado']);});const csv=rows.map(r=>r.join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`calango_${mesAno.replace('/','_')}.csv`;a.click();showToast('✅ CSV exportado!');};
 window.exportarMatrizCSV=function(mesAno){const jU=[...new Set(_relInscs.map(i=>i.jogoNome))].sort();const mU=[...new Set(_relInscs.map(i=>i.usuarioNome))].sort();const idx={};_relInscs.forEach(i=>{if(!idx[i.usuarioNome])idx[i.usuarioNome]={};idx[i.usuarioNome][i.jogoNome]=(idx[i.usuarioNome][i.jogoNome]||0)+Number(i.jogoValor||0);});const header=['Membro',...jU,'TOTAL'];const rows=mU.map(m=>{const vals=jU.map(j=>idx[m]?.[j]?Number(idx[m][j]).toFixed(2):'0.00');const tot=jU.reduce((s,j)=>s+(idx[m]?.[j]||0),0);return[m,...vals,tot.toFixed(2)];});rows.push(['TOTAL',...jU.map(j=>_relInscs.filter(i=>i.jogoNome===j).reduce((s,i)=>s+Number(i.jogoValor||0),0).toFixed(2)),_relInscs.reduce((s,i)=>s+Number(i.jogoValor||0),0).toFixed(2)]);const csv=[header,...rows].map(r=>r.join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`calango_matriz_${mesAno.replace('/','_')}.csv`;a.click();showToast('✅ Exportado!');};
@@ -2053,9 +2171,10 @@ window.inativarMembro=async function(uid){const u=allUsers.find(x=>x.uid===uid);
 
 // Inicializa tela de conciliação
 window.switchPagTab=function(tab){
+  const ids={manual:'Manual',ofx:'OFX',lista:'Lista'};
   ['manual','ofx','lista'].forEach(t=>{
-    const btn=document.getElementById('tabPag'+t.charAt(0).toUpperCase()+t.slice(1));
-    const panel=document.getElementById('pagTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    const btn=document.getElementById('tabPag'+ids[t]);
+    const panel=document.getElementById('pagTab'+ids[t]);
     if(btn){btn.style.background=tab===t?'#fff':'transparent';btn.style.color=tab===t?'var(--tx)':'var(--tx2)';}
     if(panel) panel.style.display=tab===t?'block':'none';
   });
