@@ -868,14 +868,10 @@ async function renderMinhasInscricoes(inscricoes, periodoAtual){
     const p=i.jogoTipo==='Dupla'&&i.parceiroNome?`<div style="font-size:11px;color:var(--tx2);margin-top:3px">👥 com ${i.parceiroNome.split(' ')[0]}</div>`:'';
     const cancelBtn=i.status==='Pendente'
       ?`<button class="btn-sm no" style="margin-top:10px;font-size:12px;width:100%;justify-content:center" onclick="window.cancelarInscricao('${i.id}','${i.jogoNome}')"><i class="ti ti-x"></i> Cancelar inscrição</button>`:'';
-    const pixBtn=(i.status==='Aprovado'&&pixCfg?.chave)
-      ?`<button class="btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB" onclick="window.abrirPix('${i.id}','${i.jogoNome}',${Number(i.jogoValor||0)})">
-          <i class="ti ti-qrcode" style="font-size:13px"></i> PIX · R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}
-        </button>`:'';
     return `<div class="card">
       <div class="card-row"><div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div>${p}</div><span class="badge ${bc}">${i.status}</span></div>
       <div class="valor-box"><span class="valor-label">Valor</span><span class="valor-num">R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}</span></div>
-      ${pixBtn}${cancelBtn}
+      ${cancelBtn}
     </div>`;
   }).join('');
 }
@@ -990,41 +986,6 @@ async function carregarConfigPix(){
 }
 
 // Abre modal PIX para o membro
-window.abrirPix=async function(inscId,jogoNome,valor){
-  const cfg=await carregarConfigPix();
-  if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada pelo gerente ainda.');return;}
-  // Fix 4: txid com apelido do membro para identificação no extrato bancário
-  const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
-  // pega mesAno da inscrição para incluir no txid
-  const inscObj=await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID),where('jogoNome','==',jogoNome))).then(s=>s.docs[0]?.data());
-  const periodoInsc=(inscObj?.jogoMesAno||'').replace('/','');
-  const txid=('CAL'+apelido+(periodoInsc||inscId.slice(0,6).replace(/[^a-zA-Z0-9]/g,''))).toUpperCase().slice(0,25);
-  const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',valor,txid);
-  document.getElementById('modalPixContent').innerHTML=`
-    <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
-      <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">Valor a pagar</div>
-      <div style="font-size:28px;font-weight:700;color:#0F6E56">R$ ${valor.toFixed(2).replace('.',',')}</div>
-      <div style="font-size:12px;color:#0F6E56;margin-top:4px">${jogoNome}</div>
-      <div style="font-size:11px;color:#0F6E56;margin-top:4px">Identificação: <strong>${txid}</strong></div>
-    </div>
-    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
-    <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
-    <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-      <i class="ti ti-copy"></i> Copiar código PIX
-    </button>
-    <div style="background:#FFF3DC;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:12px;color:#854F0B;line-height:1.5">
-      <strong>💡 Para o gerente identificar seu pagamento:</strong><br>
-      O extrato do clube mostrará <strong>${txid}</strong> como referência. Guarde esse código.
-    </div>
-    <div style="font-size:12px;color:var(--tx2);margin-top:10px;text-align:center">
-      Abra o app do banco → PIX → Pagar → Copia e Cola<br>
-      Favorecido: <strong>${cfg.nome||'Calango Vôlei'}</strong> · Chave: ${cfg.tipo?.toUpperCase()||'PIX'}
-    </div>`;
-  document.getElementById('modalPix').classList.add('open');
-};
-
 window.copiarPix=function(codigo){
   navigator.clipboard.writeText(codigo).then(()=>{
     showToast('✅ Código PIX copiado! Cole no app do seu banco.');
