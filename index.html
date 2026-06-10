@@ -188,6 +188,13 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             <span class="chip"><i class="ti ti-cash" style="font-size:13px"></i> R$ <span id="wbTotal">0</span></span>
           </div>
         </div>
+        <!-- Filtro de período na home -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <i class="ti ti-calendar-stats" style="color:var(--tx2);font-size:16px;flex-shrink:0"></i>
+          <select id="homePeriodoFiltro" class="form-control" style="flex:1;font-size:13px;padding:8px 10px" onchange="window.filtrarHomeMembro()">
+            <option value="">Todos os períodos</option>
+          </select>
+        </div>
         <div class="sec-header"><div class="sec-title">Jogos disponíveis</div><span class="badge bb" id="badgeJogosCount">0</span></div>
         <div id="jogosListMember"></div>
       </div>
@@ -387,11 +394,25 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       </div>
       <div class="page" id="pageGerenteUsuarios">
         <div class="sec-header"><div class="sec-title">Membros cadastrados</div><span class="badge bb" id="badgeMembrosCount"></span></div>
-        <div style="position:relative;margin-bottom:8px"><i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx2);font-size:15px;pointer-events:none"></i><input id="buscaMembro" class="form-control" placeholder="Buscar por nome, email ou apelido..." style="padding-left:34px;font-size:13px" oninput="renderUsuariosGerente()"></div>
+        <!-- campo busca — botão Buscar para disparar -->
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <div style="position:relative;flex:1">
+            <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx2);font-size:15px;pointer-events:none"></i>
+            <input id="buscaMembro" class="form-control" placeholder="Nome, apelido ou email..." style="padding-left:34px;font-size:13px"
+              onkeydown="if(event.key==='Enter')window.aplicarFiltrosMembros()">
+          </div>
+          <button class="btn-sm pr" onclick="window.aplicarFiltrosMembros()"><i class="ti ti-search"></i> Buscar</button>
+        </div>
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-          <select id="filtroNivelMembro" class="form-control" style="flex:1;min-width:100px;padding:7px 10px;font-size:12px" onchange="renderUsuariosGerente()"><option value="">Todos os níveis</option><option>Iniciante</option><option>Intermediário</option><option>Avançado</option></select>
-          <select id="filtroStatusMembro" class="form-control" style="flex:1;min-width:90px;padding:7px 10px;font-size:12px" onchange="renderUsuariosGerente()"><option value="">Todos os status</option><option>Ativo</option><option>Inativo</option></select>
-          <button class="btn-sm" onclick="limparFiltrosMembros()"><i class="ti ti-x"></i></button>
+          <select id="filtroNivelMembro" class="form-control" style="flex:1;min-width:100px;padding:7px 10px;font-size:12px"
+            onchange="window.aplicarFiltrosMembros()">
+            <option value="">Todos os níveis</option><option>Iniciante</option><option>Intermediário</option><option>Avançado</option>
+          </select>
+          <select id="filtroStatusMembro" class="form-control" style="flex:1;min-width:90px;padding:7px 10px;font-size:12px"
+            onchange="window.aplicarFiltrosMembros()">
+            <option value="">Todos os status</option><option>Ativo</option><option>Inativo</option>
+          </select>
+          <button class="btn-sm" onclick="window.limparFiltrosMembros()"><i class="ti ti-x"></i></button>
         </div>
         <div id="usuariosGerenteList"></div>
       </div>
@@ -646,7 +667,6 @@ function periodoVigente(){
 // ══ MEMBRO ══
 async function initMemberPage(){
   const periodo=periodoVigente();
-  const jogosNivel=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome));
   const[inscSnap,dupSnap]=await Promise.all([
     getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID))),
     getDocs(query(collection(db,'duplas'),where('membros','array-contains',currentUID)))
@@ -654,15 +674,31 @@ async function initMemberPage(){
   const inscricoes=inscSnap.docs.map(d=>({id:d.id,...d.data()}));
   const duplas=dupSnap.docs.map(d=>({id:d.id,...d.data()}));
 
-  // Fix 3: totalMes — usa período vigente se existir, senão soma TODAS as aprovadas
+  // popula selects de período na home e em inscrições
+  const mesesDisp=[...new Set(inscricoes.map(i=>i.jogoMesAno).filter(Boolean))].sort().reverse();
   const periodoNome=periodo?.nome||'';
+
+  // HOME period filter
+  const selHome=document.getElementById('homePeriodoFiltro');
+  if(selHome){
+    // todos os períodos de jogos disponíveis para o nível do membro
+    const mesesJogos=[...new Set(allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto').map(j=>j.mesAno).filter(Boolean))].sort().reverse();
+    const todosMeses=[...new Set([...mesesJogos,...mesesDisp])].sort().reverse();
+    selHome.innerHTML='<option value="">Todos os períodos</option>'+
+      todosMeses.map(m=>`<option value="${m}" ${m===periodoNome?'selected':''}>${m}</option>`).join('');
+  }
+
+  // calcula total do período selecionado na home (ou vigente)
+  const homePeriodoSel=selHome?.value||periodoNome;
   let totalMes=0;
   inscricoes.forEach(i=>{
     if(i.status==='Aprovado'){
-      if(periodoNome && i.jogoMesAno===periodoNome) totalMes+=Number(i.jogoValor||0);
-      else if(!periodoNome) totalMes+=Number(i.jogoValor||0);
+      if(homePeriodoSel && i.jogoMesAno===homePeriodoSel) totalMes+=Number(i.jogoValor||0);
+      else if(!homePeriodoSel) totalMes+=Number(i.jogoValor||0);
     }
   });
+
+  const jogosNivel=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!homePeriodoSel||j.mesAno===homePeriodoSel));
 
   document.getElementById('welcomeName').textContent='Olá, '+(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])+'! 👋';
   document.getElementById('welcomeLevel').textContent='Nível: '+currentUser.nivel+(periodo?' · Período '+periodo.nome+' · '+formatDate(periodo.dataInicio)+' a '+formatDate(periodo.dataFim):' · Nenhum período vigente');
@@ -670,11 +706,32 @@ async function initMemberPage(){
   document.getElementById('wbDuplas').textContent=duplas.length;
   document.getElementById('wbTotal').textContent=totalMes.toFixed(2).replace('.',',');
   document.getElementById('badgeJogosCount').textContent=jogosNivel.length+' disponíveis';
-  renderJogosMember(inscricoes,periodo);
-  renderMinhasInscricoes(inscricoes,periodo);
+  renderJogosMember(inscricoes, homePeriodoSel?{nome:homePeriodoSel}:periodo);
+  await renderMinhasInscricoes(inscricoes, periodo);
   renderMinhasDuplas(duplas);
   renderPerfil();
 }
+
+// filtro da home sem recarregar Firebase
+window.filtrarHomeMembro=async function(){
+  const sel=document.getElementById('homePeriodoFiltro');
+  const periodoSel=sel?.value||'';
+  const inscSnap=await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID)));
+  const inscricoes=inscSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+  let totalMes=0;
+  inscricoes.forEach(i=>{
+    if(i.status==='Aprovado'){
+      if(periodoSel && i.jogoMesAno===periodoSel) totalMes+=Number(i.jogoValor||0);
+      else if(!periodoSel) totalMes+=Number(i.jogoValor||0);
+    }
+  });
+  const jogosNivel=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!periodoSel||j.mesAno===periodoSel));
+  document.getElementById('wbJogos').textContent=jogosNivel.length;
+  document.getElementById('wbTotal').textContent=totalMes.toFixed(2).replace('.',',');
+  document.getElementById('badgeJogosCount').textContent=jogosNivel.length+' disponíveis';
+  renderJogosMember(inscricoes, periodoSel?{nome:periodoSel}:periodoVigente());
+};
 
 function renderJogosMember(inscricoes,periodo){
   const jogos=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome));
@@ -796,25 +853,34 @@ window.filtrarInscricoesMembro=async function(){
   await renderMinhasInscricoes(inscricoes,periodoVigente());
 };
 
-// PIX para o total do período
+// PIX para o total do período — Fix 3: garante que o total é do período selecionado
 window.abrirPixTotal=async function(total,label){
   const cfg=await carregarConfigPix();
   if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
-  const txid='CALPERIODO'+Date.now().toString(36).toUpperCase().slice(-8);
+  // Fix 4: txid inclui apelido do membro para identificação no extrato
+  const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]/g,'').slice(0,10).toUpperCase();
+  const txid=('CAL'+apelido+Date.now().toString(36).slice(-4)).toUpperCase().slice(0,25);
   const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',total,txid);
   document.getElementById('modalPixContent').innerHTML=`
     <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
       <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">Total a pagar — ${label}</div>
       <div style="font-size:28px;font-weight:700;color:#0F6E56">R$ ${total.toFixed(2).replace('.',',')}</div>
+      <div style="font-size:11px;color:#0F6E56;margin-top:4px">Identificação: <strong>${txid}</strong></div>
     </div>
     <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
     <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
     <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="ti ti-copy"></i> Copiar código PIX
     </button>
-    <div style="font-size:12px;color:var(--tx2);margin-top:12px;line-height:1.6;text-align:center">
-      Abra o app do seu banco → PIX → Pagar → Copia e Cola<br>
-      <strong>Favorecido:</strong> ${cfg.nome||'Calango Vôlei'}
+    <div style="background:#FFF3DC;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:12px;color:#854F0B;line-height:1.5">
+      <strong>💡 Para o gerente identificar seu pagamento:</strong><br>
+      Ao pagar, o extrato do clube mostrará <strong>${txid}</strong> como referência. Guarde esse código.
+    </div>
+    <div style="font-size:12px;color:var(--tx2);margin-top:10px;text-align:center">
+      Abra o app do banco → PIX → Pagar → Copia e Cola<br>
+      Favorecido: <strong>${cfg.nome||'Calango Vôlei'}</strong>
     </div>`;
   document.getElementById('modalPix').classList.add('open');
 };
@@ -890,22 +956,31 @@ async function carregarConfigPix(){
 window.abrirPix=async function(inscId,jogoNome,valor){
   const cfg=await carregarConfigPix();
   if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada pelo gerente ainda.');return;}
-  const txid=`CAL${inscId.slice(0,10).replace(/[^a-zA-Z0-9]/g,'')}`;
+  // Fix 4: txid com apelido do membro para identificação no extrato bancário
+  const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]/g,'').slice(0,10).toUpperCase();
+  const txid=('CAL'+apelido+inscId.slice(0,6).replace(/[^a-zA-Z0-9]/g,'')).toUpperCase().slice(0,25);
   const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',valor,txid);
   document.getElementById('modalPixContent').innerHTML=`
     <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
       <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">Valor a pagar</div>
       <div style="font-size:28px;font-weight:700;color:#0F6E56">R$ ${valor.toFixed(2).replace('.',',')}</div>
       <div style="font-size:12px;color:#0F6E56;margin-top:4px">${jogoNome}</div>
+      <div style="font-size:11px;color:#0F6E56;margin-top:4px">Identificação: <strong>${txid}</strong></div>
     </div>
     <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
     <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
     <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
       <i class="ti ti-copy"></i> Copiar código PIX
     </button>
-    <div style="font-size:12px;color:var(--tx2);margin-top:12px;line-height:1.6;text-align:center">
-      Abra o app do seu banco → PIX → Pagar → Copia e Cola<br>
-      <strong>Favorecido:</strong> ${cfg.nome||'Calango Vôlei'} · <strong>Chave:</strong> ${cfg.tipo?.toUpperCase()||'PIX'}
+    <div style="background:#FFF3DC;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:12px;color:#854F0B;line-height:1.5">
+      <strong>💡 Para o gerente identificar seu pagamento:</strong><br>
+      O extrato do clube mostrará <strong>${txid}</strong> como referência. Guarde esse código.
+    </div>
+    <div style="font-size:12px;color:var(--tx2);margin-top:10px;text-align:center">
+      Abra o app do banco → PIX → Pagar → Copia e Cola<br>
+      Favorecido: <strong>${cfg.nome||'Calango Vôlei'}</strong> · Chave: ${cfg.tipo?.toUpperCase()||'PIX'}
     </div>`;
   document.getElementById('modalPix').classList.add('open');
 };
@@ -1504,13 +1579,12 @@ window.exportarCSV=async function(mesAno){const snap=await getDocs(query(collect
 window.exportarMatrizCSV=function(mesAno){const jU=[...new Set(_relInscs.map(i=>i.jogoNome))].sort();const mU=[...new Set(_relInscs.map(i=>i.usuarioNome))].sort();const idx={};_relInscs.forEach(i=>{if(!idx[i.usuarioNome])idx[i.usuarioNome]={};idx[i.usuarioNome][i.jogoNome]=(idx[i.usuarioNome][i.jogoNome]||0)+Number(i.jogoValor||0);});const header=['Membro',...jU,'TOTAL'];const rows=mU.map(m=>{const vals=jU.map(j=>idx[m]?.[j]?Number(idx[m][j]).toFixed(2):'0.00');const tot=jU.reduce((s,j)=>s+(idx[m]?.[j]||0),0);return[m,...vals,tot.toFixed(2)];});rows.push(['TOTAL',...jU.map(j=>_relInscs.filter(i=>i.jogoNome===j).reduce((s,i)=>s+Number(i.jogoValor||0),0).toFixed(2)),_relInscs.reduce((s,i)=>s+Number(i.jogoValor||0),0).toFixed(2)]);const csv=[header,...rows].map(r=>r.join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`calango_matriz_${mesAno.replace('/','_')}.csv`;a.click();showToast('✅ Exportado!');};
 
 // MEMBROS GERENTE
-function renderUsuariosGerente(){
+window.aplicarFiltrosMembros=function(){
   const busca=(document.getElementById('buscaMembro')?.value||'').toLowerCase().trim();
   const nivel=document.getElementById('filtroNivelMembro')?.value||'';
   const status=document.getElementById('filtroStatusMembro')?.value||'';
   const el=document.getElementById('usuariosGerenteList');
   let membros=allUsers.filter(u=>u.tipo==='Membro');
-  // busca APENAS por nome completo, apelido e email — não CPF nem telefone
   if(busca) membros=membros.filter(u=>
     (u.nome||'').toLowerCase().includes(busca)||
     (u.nomeApresentacao||'').toLowerCase().includes(busca)||
@@ -1520,20 +1594,23 @@ function renderUsuariosGerente(){
   if(status) membros=membros.filter(u=>u.status===status);
   const total=allUsers.filter(u=>u.tipo==='Membro').length;
   const badge=document.getElementById('badgeMembrosCount');
-  if(badge)badge.textContent=membros.length===total?`${total}`:`${membros.length} de ${total}`;
+  if(badge)badge.textContent=membros.length===total?String(total):`${membros.length} de ${total}`;
   if(!total){el.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Nenhum membro cadastrado.</p></div>';return;}
-  if(!membros.length){el.innerHTML='<div class="empty"><i class="ti ti-search"></i><p>Nenhum membro encontrado.</p></div>';return;}
+  if(!membros.length){el.innerHTML='<div class="empty"><i class="ti ti-search"></i><p>Nenhum membro encontrado com os filtros aplicados.</p></div>';return;}
   el.innerHTML=membros.map(u=>`<div class="card" style="cursor:pointer" onclick="window.verMembro('${u.uid}')"><div class="card-row"><div style="display:flex;align-items:center;gap:11px"><div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div><div><div class="card-title">${u.nome}${u.nomeApresentacao?` <span style="font-size:12px;color:var(--or);font-weight:400">(${u.nomeApresentacao})</span>`:''}</div><div class="card-sub">${u.email}</div></div></div><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></div><div class="card-meta"><span class="badge bb">${u.nivel}</span><span class="badge bgy">${u.telefone||'—'}</span></div></div>`).join('');
-}
-window.limparFiltrosMembros=function(){['buscaMembro','filtroNivelMembro','filtroStatusMembro'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});renderUsuariosGerente();};
-
+};
+// alias para compatibilidade com chamadas internas
+function renderUsuariosGerente(){window.aplicarFiltrosMembros();}
+window.limparFiltrosMembros=function(){
+  ['buscaMembro','filtroNivelMembro','filtroStatusMembro'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  window.aplicarFiltrosMembros();
+};
 window.recarregarMembros=async function(){
-  // recarrega usuários do Firestore para garantir dados frescos
   loading(true);
   const usSnap=await getDocs(collection(db,'usuarios'));
   allUsers=usSnap.docs.map(d=>({uid:d.id,...d.data()}));
   loading(false);
-  renderUsuariosGerente();
+  window.aplicarFiltrosMembros();
 };
 window.verMembro=function(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
