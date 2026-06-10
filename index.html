@@ -308,6 +308,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <button class="btn-action" onclick="gerentePage('pageGerentePeriodos',document.querySelectorAll('#gerenteNav .bnav-btn')[6])"><div class="bai"><i class="ti ti-calendar-stats"></i></div><div class="bat"><div class="bat-title">Períodos de inscrição</div><div class="bat-sub">Vigências</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[7]);recarregarMembros()"><div class="bai"><i class="ti ti-users"></i></div><div class="bat"><div class="bat-title">Gerenciar membros</div><div class="bat-sub" id="hintMembros">—</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerenteConfig',document.querySelectorAll('#gerenteNav .bnav-btn')[8])"><div class="bai"><i class="ti ti-settings"></i></div><div class="bat"><div class="bat-title">Configurações</div><div class="bat-sub">PIX e dados do clube</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteConciliacao',document.querySelectorAll('#gerenteNav .bnav-btn')[9])"><div class="bai"><i class="ti ti-file-import"></i></div><div class="bat"><div class="bat-title">Conciliação de pagamentos</div><div class="bat-sub">Importar extrato OFX/XLSX</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
       </div>
       <div class="page" id="pageGerenteInscricoes">
         <div class="sec-header"><div class="sec-title">Inscrições pendentes</div></div>
@@ -460,6 +461,39 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           <div style="font-size:13px;color:var(--tx2);text-align:center">Configure a chave PIX acima para ver a pré-visualização</div>
         </div>
       </div>
+
+      <!-- CONCILIAÇÃO DE PAGAMENTOS -->
+      <div class="page" id="pageGerenteConciliacao">
+        <div class="sec-header"><div class="sec-title">Conciliação de pagamentos</div></div>
+        <div class="card" style="background:#E8F3FE;border-color:#B5D4F4;margin-bottom:14px">
+          <div style="font-size:12px;color:#185FA5;line-height:1.6">
+            <strong>Como funciona:</strong> o membro gera o PIX com código <strong>CAL{APELIDO}{MMAAAA}</strong> (ex: <code>CALTAMIRIS062026</code>). Você exporta o extrato do banco no formato <strong>OFX</strong> (padrão universal — todos os bancos suportam), importa aqui e o sistema identifica automaticamente quem pagou. Para membros não identificados automaticamente, você associa manualmente. Membros com pagamento confirmado aparecem na Lista do Dia.
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="form-group">
+            <label class="form-label">Período de referência</label>
+            <select class="form-control" id="concilPeriodo" style="font-size:13px">
+              <option value="">Selecione o período...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Arquivo OFX do extrato bancário</label>
+            <input type="file" class="form-control" id="concilFile" accept=".ofx,.OFX" style="font-size:13px;padding:8px">
+          </div>
+          <button class="btn-sm pr" style="width:100%;justify-content:center" onclick="window.processarExtrato()">
+            <i class="ti ti-file-import"></i> Processar extrato OFX
+          </button>
+        </div>
+        <div id="concilResultado"></div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Pagamentos registrados</div>
+        <div class="form-group" style="margin-bottom:10px">
+          <select class="form-control" id="concilFiltroMes" style="font-size:13px" onchange="window.renderPagamentosRegistrados()">
+            <option value="">Todos os períodos</option>
+          </select>
+        </div>
+        <div id="pagamentosRegistradosList"></div>
+      </div>
     </div>
     <div class="bottomnav" id="gerenteNav">
       <button class="bnav-btn active" onclick="gerentePage('pageGerenteHome',this)"><i class="ti ti-home"></i>Início</button>
@@ -471,6 +505,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <button class="bnav-btn" onclick="gerentePage('pageGerentePeriodos',this)"><i class="ti ti-calendar-stats"></i>Períodos</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this);recarregarMembros()"><i class="ti ti-users"></i>Membros</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteConfig',this);carregarConfig()"><i class="ti ti-settings"></i>Config</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteConciliacao',this)"><i class="ti ti-file-import"></i>Pagamentos</button>
     </div>
   </div>
 </div><!-- screenMain -->
@@ -860,8 +895,10 @@ window.abrirPixTotal=async function(total,label){
   // Fix 4: txid inclui apelido do membro para identificação no extrato
   const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-zA-Z0-9]/g,'').slice(0,10).toUpperCase();
-  const txid=('CAL'+apelido+Date.now().toString(36).slice(-4)).toUpperCase().slice(0,25);
+    .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
+  // extrai MM e AAAA do label (ex: "Período 06/2026" → "062026")
+  const periodoCode=(label.match(/(\d{2})\/(\d{4})/)||['','',''])[0].replace('/','');
+  const txid=('CAL'+apelido+(periodoCode||Date.now().toString(36).slice(-4))).toUpperCase().slice(0,25);
   const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',total,txid);
   document.getElementById('modalPixContent').innerHTML=`
     <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
@@ -959,8 +996,11 @@ window.abrirPix=async function(inscId,jogoNome,valor){
   // Fix 4: txid com apelido do membro para identificação no extrato bancário
   const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-zA-Z0-9]/g,'').slice(0,10).toUpperCase();
-  const txid=('CAL'+apelido+inscId.slice(0,6).replace(/[^a-zA-Z0-9]/g,'')).toUpperCase().slice(0,25);
+    .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
+  // pega mesAno da inscrição para incluir no txid
+  const inscObj=await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID),where('jogoNome','==',jogoNome))).then(s=>s.docs[0]?.data());
+  const periodoInsc=(inscObj?.jogoMesAno||'').replace('/','');
+  const txid=('CAL'+apelido+(periodoInsc||inscId.slice(0,6).replace(/[^a-zA-Z0-9]/g,''))).toUpperCase().slice(0,25);
   const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',valor,txid);
   document.getElementById('modalPixContent').innerHTML=`
     <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
@@ -1131,9 +1171,9 @@ window.initParticipantesMembro=function(){
   const sel=document.getElementById('participantesJogoSel');
   const selData=document.getElementById('participantesDataSel');
   const periodo=periodoVigente();
-  const jogos=allJogos.filter(j=>j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome));
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome)));
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
   selData.innerHTML='<option value="">Selecione uma data...</option>';
   selData.disabled=true;
   document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione o jogo e a data</p></div>';
@@ -1192,8 +1232,23 @@ window.carregarParticipantesDia=async function(){
     const desistencias=confirmacoes.filter(c=>c.confirmado===false).length;
     const pendentes=inscritos.length-confirmacoes.length;
 
+    // verifica pagamentos do período deste jogo
+    const periodoJogo=jogo.mesAno||'';
+    let pagamentosMap={};
+    if(periodoJogo){
+      const pagSnap=await getDocs(query(collection(db,'pagamentos'),where('periodo','==',periodoJogo)));
+      pagSnap.docs.forEach(d=>{pagamentosMap[d.data().usuarioId]=true;});
+    }
+    // Regra: membro aparece na lista se pagou (ou se não há pagamentos registrados para o período)
+    const temPagamentos=Object.keys(pagamentosMap).length>0;
+    const inscritosVisiveis=temPagamentos
+      ? inscritos.filter(i=>pagamentosMap[i.usuarioId])
+      : inscritos;
+    const inscritosSemPagamento=temPagamentos
+      ? inscritos.filter(i=>!pagamentosMap[i.usuarioId])
+      : [];
+
     const panel=document.getElementById('participantesDiaPanel');
-    // data formatada
     const dataObj=new Date(dataKey+'T12:00:00');
     let html=`<div class="card" style="background:var(--sur2);margin-bottom:12px">
       <div class="card-title">${jogo.nome}</div>
@@ -1203,20 +1258,33 @@ window.carregarParticipantesDia=async function(){
         <div style="background:#FEEEEE;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#A32D2D">${desistencias}</div><div style="font-size:10px;color:#A32D2D">Desistências</div></div>
         <div style="background:#F0EEEA;border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:700;color:#666">${pendentes}</div><div style="font-size:10px;color:#666">Pendentes</div></div>
       </div>
+      ${temPagamentos?`<div style="font-size:11px;color:#0F6E56;margin-top:8px;text-align:center">💚 Mostrando apenas membros com pagamento confirmado</div>`:''}
     </div>`;
 
-    // lista de inscritos
-    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Inscritos (${inscritos.length})</div>`;
-    if(!inscritos.length){
-      html+='<div class="empty" style="padding:16px"><i class="ti ti-calendar-x"></i><p>Nenhum membro inscrito</p></div>';
+    // lista de inscritos com pagamento
+    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Inscritos ${temPagamentos?'com pagamento':''}(${inscritosVisiveis.length})</div>`;
+    if(!inscritosVisiveis.length){
+      html+='<div class="empty" style="padding:16px"><i class="ti ti-calendar-x"></i><p>Nenhum membro inscrito com pagamento confirmado</p></div>';
     }else{
       html+='<div class="card" style="padding:0;overflow:hidden">';
-      html+=inscritos.map(i=>{
+      html+=inscritosVisiveis.map(i=>{
         const conf=confirmacoes.find(c=>c.usuarioId===i.usuarioId);
         const st=conf?.confirmado===true?'confirmado':conf?.confirmado===false?'desistiu':'pendente';
         const label=st==='confirmado'?'✅ Confirmado':st==='desistiu'?'❌ Desistiu':'⏳ Pendente';
         const cls=st==='confirmado'?'part-confirmado':st==='desistiu'?'part-desistiu':'part-pendente';
-        const nomeExib1=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];return`<div class="part-item"><span class="part-nome">${nomeExib1}</span><span class="part-status ${cls}">${label}</span></div>`;
+        const nomeExib1=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];
+        return`<div class="part-item"><span class="part-nome">${nomeExib1} <span style="font-size:10px;color:#0F6E56">💚</span></span><span class="part-status ${cls}">${label}</span></div>`;
+      }).join('');
+      html+='</div>';
+    }
+
+    // aguardando pagamento
+    if(inscritosSemPagamento.length){
+      html+=`<div style="font-size:11px;font-weight:600;color:#A32D2D;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Aguardando pagamento (${inscritosSemPagamento.length})</div>`;
+      html+='<div class="card" style="padding:0;overflow:hidden;border-color:#F7C1C1">';
+      html+=inscritosSemPagamento.map(i=>{
+        const nomeExib2=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];
+        return`<div class="part-item"><span class="part-nome" style="color:#A32D2D">${nomeExib2}</span><span class="part-status part-desistiu">Sem pagamento</span></div>`;
       }).join('');
       html+='</div>';
     }
@@ -1229,7 +1297,7 @@ window.carregarParticipantesDia=async function(){
       html+='</div>';
     }
 
-    // botão de confirmação do membro logado (só se inscrito)
+    // botão de confirmação do membro logado (só se inscrito E com pagamento)
     const minhaInsc=inscritos.find(i=>i.usuarioId===currentUID);
     if(minhaInsc){
       const minhaConf=confirmacoes.find(c=>c.usuarioId===currentUID);
@@ -1276,9 +1344,9 @@ window.initDiaristasMembro=function(){
   const sel=document.getElementById('diaristasJogoSelMembro');
   const selData=document.getElementById('diaristasDataSelMembro');
   const periodo=periodoVigente();
-  const jogos=allJogos.filter(j=>j.status==='Aberto'&&j.nivel===currentUser.nivel&&(!periodo||j.mesAno===periodo.nome));
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.nivel===currentUser.nivel&&(!periodo||j.mesAno===periodo.nome)));
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
   selData.innerHTML='<option value="">Selecione uma data...</option>';
   selData.disabled=true;
   document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div>';
@@ -1549,6 +1617,20 @@ window.togglePeriodo=async function(id){const p=allPeriodos.find(x=>x.id===id);c
 
 // RELATÓRIO
 window.switchRelTab=function(tab){['jogo','matriz','ocupacao'].forEach(t=>{const btn=document.getElementById('tabRel'+t.charAt(0).toUpperCase()+t.slice(1));if(btn){btn.style.background=tab===t?'#fff':'transparent';btn.style.color=tab===t?'var(--tx)':'var(--tx2)';}});document.getElementById('relatorioContent').style.display=tab==='jogo'?'block':'none';document.getElementById('relatorioMatriz').style.display=tab==='matriz'?'block':'none';document.getElementById('relatorioOcupacao').style.display=tab==='ocupacao'?'block':'none';};
+// Ordem canônica dos dias da semana
+const ORDEM_DIA={'Domingo':0,'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,'Sexta':5,'Sábado':6};
+function sortJogosPorDia(jogos){
+  return [...jogos].sort((a,b)=>{
+    const da=ORDEM_DIA[a.dia]??9,db=ORDEM_DIA[b.dia]??9;
+    if(da!==db)return da-db;
+    return(a.nivel||'').localeCompare(b.nivel||'');
+  });
+}
+function nomeExib(inscricao){
+  const u=allUsers.find(u=>u.uid===inscricao.usuarioId);
+  return u?.nomeApresentacao||u?.nome?.split(' ')[0]||inscricao.usuarioNome?.split(' ')[0]||'?';
+}
+
 window.gerarRelatorio=async function(){
   const mes=document.getElementById('relMes').value;const ano=document.getElementById('relAno').value;const mesAno=`${mes}/${ano}`;
   loading(true);
@@ -1557,22 +1639,100 @@ window.gerarRelatorio=async function(){
   const el=document.getElementById('relatorioContent');const elM=document.getElementById('relatorioMatriz');
   if(!_relInscs.length){document.getElementById('relTabs').style.display='none';el.style.display='block';elM.style.display='none';el.innerHTML='<div class="empty"><i class="ti ti-report"></i><p>Nenhuma inscrição em '+mesAno+'</p></div>';loading(false);return;}
   document.getElementById('relTabs').style.display='block';switchRelTab('jogo');
-  const porJogo={};_relInscs.forEach(i=>{if(!porJogo[i.jogoNome])porJogo[i.jogoNome]={valor:i.jogoValor||0,membros:[]};porJogo[i.jogoNome].membros.push(i.usuarioNome);});
-  let totalGeral=0;let rows='';
-  Object.entries(porJogo).forEach(([jNome,dados])=>{const sub=dados.membros.length*dados.valor;totalGeral+=sub;rows+=`<tr><td style="font-weight:600">${jNome}</td><td style="text-align:center">${dados.membros.length}</td><td style="text-align:right">R$ ${Number(dados.valor).toFixed(2).replace('.',',')}</td><td style="text-align:right">R$ ${sub.toFixed(2).replace('.',',')}</td></tr><tr><td colspan="4" style="font-size:11px;color:var(--tx2);padding:3px 10px 10px">${dados.membros.join(', ')}</td></tr>`;});
-  el.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px"><strong>${mesAno}</strong> · ${_relInscs.length} inscrições</div><div style="overflow-x:auto"><table class="rel-table"><thead><tr><th>Jogo</th><th style="text-align:center">Inscritos</th><th style="text-align:right">Valor/pessoa</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div><div class="rel-total"><span>Total em ${mesAno}</span><span>R$ ${totalGeral.toFixed(2).replace('.',',')}</span></div><button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarCSV('${mesAno}')"><i class="ti ti-download"></i> CSV por jogo</button>`;
-  const jogosUnicos=[...new Set(_relInscs.map(i=>i.jogoNome))].sort();const membrosUnicos=[...new Set(_relInscs.map(i=>i.usuarioNome))].sort();
-  const idx={};_relInscs.forEach(i=>{if(!idx[i.usuarioNome])idx[i.usuarioNome]={};idx[i.usuarioNome][i.jogoNome]=(idx[i.usuarioNome][i.jogoNome]||0)+Number(i.jogoValor||0);});
-  const thJ=jogosUnicos.map(j=>`<th style="min-width:90px;font-size:11px">${j}</th>`).join('');
-  const tbR=membrosUnicos.map(m=>{const cels=jogosUnicos.map(j=>{const v=idx[m]?.[j];return v?`<td style="text-align:right;font-size:12px;color:#0F6E56">R$ ${v.toFixed(2).replace('.',',')}</td>`:`<td style="text-align:center;color:var(--tx2)">—</td>`;}).join('');const tot=jogosUnicos.reduce((s,j)=>s+(idx[m]?.[j]||0),0);return`<tr><td style="font-weight:500;font-size:12px;white-space:nowrap">${m}</td>${cels}<td style="text-align:right;font-weight:700;font-size:12px;color:var(--or)">R$ ${tot.toFixed(2).replace('.',',')}</td></tr>`;}).join('');
-  const totCols=jogosUnicos.map(j=>{const t=_relInscs.filter(i=>i.jogoNome===j).reduce((s,i)=>s+Number(i.jogoValor||0),0);return`<td style="text-align:right;font-weight:700;font-size:12px">R$ ${t.toFixed(2).replace('.',',')}</td>`;}).join('');
-  const totTudo=_relInscs.reduce((s,i)=>s+Number(i.jogoValor||0),0);
-  elM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px"><strong>${membrosUnicos.length}</strong> membros · Total: <strong style="color:var(--or)">R$ ${totTudo.toFixed(2).replace('.',',')}</strong></div><div style="overflow-x:auto"><table class="rel-table" style="min-width:100%"><thead><tr><th style="min-width:120px">Membro</th>${thJ}<th style="text-align:right;background:#854F0B">Total</th></tr></thead><tbody>${tbR}</tbody><tfoot><tr style="background:var(--sur2)"><td style="font-weight:700;font-size:12px">Total por jogo</td>${totCols}<td style="text-align:right;font-weight:700;font-size:12px;color:var(--or)">R$ ${totTudo.toFixed(2).replace('.',',')}</td></tr></tfoot></table></div><button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarMatrizCSV('${mesAno}')"><i class="ti ti-download"></i> CSV matriz</button>`;
-  const niveis=['Iniciante','Intermediário','Avançado'];const jogosDoMes=allJogos.filter(j=>j.mesAno===mesAno);
-  const thDias=jogosDoMes.map(j=>`<th style="min-width:80px;font-size:11px;white-space:nowrap">${j.nome}<br><span style="font-weight:400;opacity:.7">${j.nivel}</span></th>`).join('');
-  const ocupR=niveis.map(niv=>{const cels=jogosDoMes.map(j=>{const c=_relInscs.filter(i=>i.jogoNome===j.nome&&allUsers.find(u=>(u.uid===i.usuarioId||u.nome===i.usuarioNome)&&u.nivel===niv)).length;return`<td style="text-align:center;font-size:13px;font-weight:${c>0?'600':'400'};color:${c>0?'#0F6E56':'var(--tx2)'}">${c||'—'}</td>`;}).join('');const totN=jogosDoMes.reduce((s,j)=>s+_relInscs.filter(i=>i.jogoNome===j.nome&&allUsers.find(u=>(u.uid===i.usuarioId||u.nome===i.usuarioNome)&&u.nivel===niv)).length,0);return`<tr><td style="font-weight:600;font-size:12px">${niv}</td>${cels}<td style="text-align:center;font-weight:700;color:var(--or)">${totN||'—'}</td></tr>`;}).join('');
-  const totD=jogosDoMes.map(j=>{const c=_relInscs.filter(i=>i.jogoNome===j.nome).length;return`<td style="text-align:center;font-weight:700;font-size:12px">${c||'—'}</td>`;}).join('');
-  document.getElementById('relatorioOcupacao').innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Nível × dia — <strong>${mesAno}</strong></div><div style="overflow-x:auto"><table class="rel-table" style="min-width:100%"><thead><tr><th style="min-width:100px">Nível</th>${thDias}<th style="text-align:center">Total</th></tr></thead><tbody>${ocupR}</tbody><tfoot><tr style="background:var(--sur2)"><td style="font-weight:700;font-size:12px">Total</td>${totD}<td style="text-align:center;font-weight:700;color:var(--or)">${_relInscs.length}</td></tr></tfoot></table></div>`;
+
+  // ── jogos do mês ordenados por dia da semana ──
+  const jogosDoMes=sortJogosPorDia(allJogos.filter(j=>j.mesAno===mesAno));
+
+  // ══ RELATÓRIO 1: POR JOGO ══
+  // Agrupa: dia da semana → nível → inscritos
+  // Fix 3: segregação por dia+nível, ordenado por dia da semana
+  {
+    const grupos={};
+    jogosDoMes.forEach(j=>{
+      const key=`${j.dia}|||${j.nivel}`;
+      if(!grupos[key]) grupos[key]={dia:j.dia,nivel:j.nivel,jogos:[]};
+      const inscDoJogo=_relInscs.filter(i=>i.jogoId===j.id);
+      if(inscDoJogo.length) grupos[key].jogos.push({jogo:j,inscs:inscDoJogo});
+    });
+    let totalGeral=0;let rows='';
+    // ordena os grupos pela ordem dos dias
+    Object.values(grupos)
+      .sort((a,b)=>(ORDEM_DIA[a.dia]??9)-(ORDEM_DIA[b.dia]??9)||a.nivel.localeCompare(b.nivel))
+      .forEach(g=>{
+        if(!g.jogos.length) return;
+        rows+=`<tr><td colspan="4" style="background:var(--gd);color:#fff;font-weight:700;font-size:12px;padding:8px 12px">${g.dia} · ${g.nivel}</td></tr>`;
+        g.jogos.forEach(({jogo,inscs})=>{
+          const sub=inscs.length*Number(jogo.valor||0);
+          totalGeral+=sub;
+          const nomes=inscs.map(i=>nomeExib(i)).join(', ');
+          rows+=`<tr><td style="font-weight:600;padding-left:18px">${jogo.nome}</td><td style="text-align:center">${inscs.length}</td><td style="text-align:right">R$ ${Number(jogo.valor||0).toFixed(2).replace('.',',')}</td><td style="text-align:right">R$ ${sub.toFixed(2).replace('.',',')}</td></tr>`;
+          rows+=`<tr><td colspan="4" style="font-size:11px;color:var(--tx2);padding:2px 18px 10px">${nomes}</td></tr>`;
+        });
+      });
+    el.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px"><strong>${mesAno}</strong> · ${_relInscs.length} inscrições</div><div style="overflow-x:auto"><table class="rel-table"><thead><tr><th>Jogo</th><th style="text-align:center">Inscritos</th><th style="text-align:right">Valor/pessoa</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div><div class="rel-total"><span>Total em ${mesAno}</span><span>R$ ${totalGeral.toFixed(2).replace('.',',')}</span></div><button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarCSV('${mesAno}')"><i class="ti ti-download"></i> CSV por jogo</button>`;
+  }
+
+  // ══ RELATÓRIO 2: MEMBROS × DIAS ══
+  // Fix 2: colunas ordenadas por dia da semana; membro mostra nomeApresentacao + nível
+  {
+    // jogos únicos ordenados por dia
+    const jogosOrd=jogosDoMes.filter(j=>_relInscs.some(i=>i.jogoId===j.id));
+    // membros únicos
+    const membroIds=[...new Set(_relInscs.map(i=>i.usuarioId))];
+    const membrosOrd=membroIds.map(uid=>{
+      const u=allUsers.find(x=>x.uid===uid);
+      const nome=u?.nomeApresentacao||u?.nome?.split(' ')[0]||uid;
+      const nivel=u?.nivel||'';
+      return {uid,nome,nivel};
+    }).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+
+    const idx={};
+    _relInscs.forEach(i=>{
+      if(!idx[i.usuarioId])idx[i.usuarioId]={};
+      idx[i.usuarioId][i.jogoId]=(idx[i.usuarioId][i.jogoId]||0)+Number(i.jogoValor||0);
+    });
+    const thJ=jogosOrd.map(j=>`<th style="min-width:90px;font-size:11px;white-space:nowrap">${j.nome}<br><span style="font-weight:400;opacity:.8">${j.dia}</span></th>`).join('');
+    const tbR=membrosOrd.map(m=>{
+      const cels=jogosOrd.map(j=>{
+        const v=idx[m.uid]?.[j.id];
+        return v?`<td style="text-align:right;font-size:12px;color:#0F6E56">R$ ${v.toFixed(2).replace('.',',')}</td>`:`<td style="text-align:center;color:var(--tx2)">—</td>`;
+      }).join('');
+      const tot=jogosOrd.reduce((s,j)=>s+(idx[m.uid]?.[j.id]||0),0);
+      return`<tr><td style="font-weight:500;font-size:12px;white-space:nowrap">${m.nome} <span class="badge bgy" style="font-size:10px">${m.nivel}</span></td>${cels}<td style="text-align:right;font-weight:700;font-size:12px;color:var(--or)">R$ ${tot.toFixed(2).replace('.',',')}</td></tr>`;
+    }).join('');
+    const totCols=jogosOrd.map(j=>{const t=_relInscs.filter(i=>i.jogoId===j.id).reduce((s,i)=>s+Number(i.jogoValor||0),0);return`<td style="text-align:right;font-weight:700;font-size:12px">R$ ${t.toFixed(2).replace('.',',')}</td>`;}).join('');
+    const totTudo=_relInscs.reduce((s,i)=>s+Number(i.jogoValor||0),0);
+    elM.innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px"><strong>${membrosOrd.length}</strong> membros · Total: <strong style="color:var(--or)">R$ ${totTudo.toFixed(2).replace('.',',')}</strong></div><div style="overflow-x:auto"><table class="rel-table" style="min-width:100%"><thead><tr><th style="min-width:130px">Membro</th>${thJ}<th style="text-align:right;background:#854F0B">Total</th></tr></thead><tbody>${tbR}</tbody><tfoot><tr style="background:var(--sur2)"><td style="font-weight:700;font-size:12px">Total por jogo</td>${totCols}<td style="text-align:right;font-weight:700;font-size:12px;color:var(--or)">R$ ${totTudo.toFixed(2).replace('.',',')}</td></tr></tfoot></table></div><button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px" onclick="window.exportarMatrizCSV('${mesAno}')"><i class="ti ti-download"></i> CSV matriz</button>`;
+  }
+
+  // ══ RELATÓRIO 3: NÍVEL × DIA ══
+  // Fix 1: colunas = apenas os dias únicos (sem repetição por nível); linhas = níveis
+  {
+    const niveis=['Iniciante','Intermediário','Avançado'];
+    // dias únicos ordenados (sem repetir)
+    const diasUnicos=[...new Set(jogosDoMes.map(j=>j.dia))];
+    // para cada célula (nivel × dia), conta inscritos em qualquer jogo daquele dia+nível
+    const thDias=diasUnicos.map(d=>`<th style="text-align:center;font-size:12px;min-width:70px">${d}</th>`).join('');
+    const ocupR=niveis.map(niv=>{
+      const cels=diasUnicos.map(dia=>{
+        // todos os jogos daquele dia para aquele nível
+        const jogosCell=jogosDoMes.filter(j=>j.dia===dia&&j.nivel===niv);
+        const c=jogosCell.reduce((s,j)=>s+_relInscs.filter(i=>i.jogoId===j.id).length,0);
+        return`<td style="text-align:center;font-size:13px;font-weight:${c>0?'600':'400'};color:${c>0?'#0F6E56':'var(--tx2)'}">${c||'—'}</td>`;
+      }).join('');
+      const totN=diasUnicos.reduce((s,dia)=>{
+        const jogosCell=jogosDoMes.filter(j=>j.dia===dia&&j.nivel===niv);
+        return s+jogosCell.reduce((ss,j)=>ss+_relInscs.filter(i=>i.jogoId===j.id).length,0);
+      },0);
+      return`<tr><td style="font-weight:600;font-size:12px">${niv}</td>${cels}<td style="text-align:center;font-weight:700;color:var(--or)">${totN||'—'}</td></tr>`;
+    }).join('');
+    const totD=diasUnicos.map(dia=>{
+      const c=jogosDoMes.filter(j=>j.dia===dia).reduce((s,j)=>s+_relInscs.filter(i=>i.jogoId===j.id).length,0);
+      return`<td style="text-align:center;font-weight:700;font-size:12px">${c||'—'}</td>`;
+    }).join('');
+    document.getElementById('relatorioOcupacao').innerHTML=`<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Nível × dia — <strong>${mesAno}</strong></div><div style="overflow-x:auto"><table class="rel-table" style="min-width:100%"><thead><tr><th style="min-width:100px">Nível</th>${thDias}<th style="text-align:center">Total</th></tr></thead><tbody>${ocupR}</tbody><tfoot><tr style="background:var(--sur2)"><td style="font-weight:700;font-size:12px">Total</td>${totD}<td style="text-align:center;font-weight:700;color:var(--or)">${_relInscs.length}</td></tr></tfoot></table></div>`;
+  }
+
   loading(false);
 };
 window.exportarCSV=async function(mesAno){const snap=await getDocs(query(collection(db,'inscricoes'),where('jogoMesAno','==',mesAno),where('status','==','Aprovado')));const rows=[['Nome','Jogo','Mês/Ano','Valor (R$)','Status']];snap.docs.forEach(d=>{const i=d.data();rows.push([i.usuarioNome,i.jogoNome,i.jogoMesAno,i.jogoValor||0,'Aprovado']);});const csv=rows.map(r=>r.join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`calango_${mesAno.replace('/','_')}.csv`;a.click();showToast('✅ CSV exportado!');};
@@ -1627,20 +1787,300 @@ window.verMembro=function(uid){
 window.salvarMembro=async function(uid){const u=allUsers.find(x=>x.uid===uid);const dados={nome:document.getElementById('editNome').value.trim()||u.nome,nomeApresentacao:document.getElementById('editNomeApres').value.trim(),telefone:document.getElementById('editTelefone').value.trim(),nivel:document.getElementById('editNivel').value,emergenciaNome:document.getElementById('editEmergNome').value.trim(),emergenciaTel:document.getElementById('editEmergTel').value.trim(),doenca:document.getElementById('editDoenca').value.trim()||'Nenhuma'};loading(true);await updateDoc(doc(db,'usuarios',uid),dados);Object.assign(u,dados);closeModal('modalMembro');renderUsuariosGerente();loading(false);showToast('✅ Dados atualizados!');};
 window.inativarMembro=async function(uid){const u=allUsers.find(x=>x.uid===uid);const n=u.status==='Ativo'?'Inativo':'Ativo';loading(true);await updateDoc(doc(db,'usuarios',uid),{status:n});u.status=n;closeModal('modalMembro');renderUsuariosGerente();loading(false);showToast('✅ Status atualizado!');};
 
+// ══ CONCILIAÇÃO DE PAGAMENTOS ══
+
+// Inicializa tela de conciliação
+async function initConciliacao(){
+  const sel=document.getElementById('concilPeriodo');
+  const selFiltro=document.getElementById('concilFiltroMes');
+  const meses=[...new Set(allPeriodos.map(p=>p.nome).filter(Boolean))].sort().reverse();
+  sel.innerHTML='<option value="">Selecione o período...</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  selFiltro.innerHTML='<option value="">Todos os períodos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  await renderPagamentosRegistrados();
+}
+
+// Registra pagamento manualmente se necessário
+window.registrarPagamentoManual=async function(usuarioId,usuarioNome,periodo,valor){
+  if(!confirm(`Confirmar pagamento de R$ ${valor.toFixed(2).replace('.',',')} para ${usuarioNome} em ${periodo}?`))return;
+  loading(true);
+  await addDoc(collection(db,'pagamentos'),{
+    usuarioId,usuarioNome,periodo,valor,
+    origem:'manual',data:new Date().toISOString().slice(0,10),
+    criadoEm:serverTimestamp()
+  });
+  showToast('✅ Pagamento registrado!');
+  await renderPagamentosRegistrados();
+  loading(false);
+};
+
+window.excluirPagamento=async function(id,nome){
+  if(!confirm(`Excluir pagamento de ${nome}?`))return;
+  loading(true);
+  await deleteDoc(doc(db,'pagamentos',id));
+  showToast('🗑️ Pagamento excluído.');
+  await renderPagamentosRegistrados();
+  loading(false);
+};
+
+window.renderPagamentosRegistrados=async function(){
+  const filtroMes=document.getElementById('concilFiltroMes')?.value||'';
+  const snap=await getDocs(collection(db,'pagamentos'));
+  let pags=snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(filtroMes) pags=pags.filter(p=>p.periodo===filtroMes);
+  pags.sort((a,b)=>(a.periodo||'').localeCompare(b.periodo||'')||(a.usuarioNome||'').localeCompare(b.usuarioNome||''));
+  const el=document.getElementById('pagamentosRegistradosList');
+  if(!pags.length){el.innerHTML='<div class="empty"><i class="ti ti-cash-off"></i><p>Nenhum pagamento registrado.</p></div>';return;}
+  el.innerHTML=pags.map(p=>{
+    const u=allUsers.find(x=>x.uid===p.usuarioId);
+    const nome=u?.nomeApresentacao||p.usuarioNome?.split(' ')[0]||p.usuarioNome;
+    return`<div class="card"><div class="card-row"><div><div class="card-title">${nome}</div><div class="card-sub">${p.periodo} · ${p.data||''} · ${p.origem==='ofx'?'📄 OFX/Extrato':p.origem==='xlsx'?'📊 XLSX/Extrato':'✏️ Manual'}</div></div><span class="badge bg">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span></div><button class="btn-sm no" style="margin-top:8px;font-size:11px" onclick="window.excluirPagamento('${p.id}','${nome}')"><i class="ti ti-trash"></i> Remover</button></div>`;
+  }).join('');
+};
+
+// Processa extrato OFX
+window.processarExtrato=async function(){
+  const fileInput=document.getElementById('concilFile');
+  const periodo=document.getElementById('concilPeriodo').value;
+  if(!periodo){showToast('⚠️ Selecione o período');return;}
+  if(!fileInput.files.length){showToast('⚠️ Selecione o arquivo OFX');return;}
+  const file=fileInput.files[0];
+  loading(true);
+
+  try{
+    // ── Lê o OFX como texto ──
+    const texto=await file.text();
+
+    // ── Parser OFX puro JS ──
+    // OFX pode ser SGML (antigo, sem fechamento de tags) ou XML (moderno)
+    // Extrai todas as transações STMTTRN
+    function extrairTag(bloco, tag){
+      // tenta <TAG>valor</TAG> (XML) ou <TAG>valor\n (SGML)
+      const xmlMatch=bloco.match(new RegExp(`<${tag}>([^<]*)</${tag}>`, 'i'));
+      if(xmlMatch) return xmlMatch[1].trim();
+      const sgmlMatch=bloco.match(new RegExp(`<${tag}>([^\r\n<]*)`, 'i'));
+      return sgmlMatch?sgmlMatch[1].trim():'';
+    }
+
+    // divide em blocos de transação
+    const blocos=[];
+    const regBloco=/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+    let m;
+    while((m=regBloco.exec(texto))!==null) blocos.push(m[1]);
+
+    // fallback SGML: sem </STMTTRN>
+    if(!blocos.length){
+      const partes=texto.split(/<STMTTRN>/i).slice(1);
+      partes.forEach(p=>{
+        const fim=p.search(/<\/?(STMTTRN|BANKTRANLIST|OFX)/i);
+        blocos.push(fim>0?p.slice(0,fim):p);
+      });
+    }
+
+    if(!blocos.length){
+      loading(false);
+      showToast('❌ Nenhuma transação encontrada no OFX');
+      return;
+    }
+
+    // ── Monta mapas de identificação ──
+    const periodoCode=periodo.replace('/','');
+
+    // mapa txid → usuário
+    const txidMap={};
+    allUsers.filter(u=>u.tipo==='Membro').forEach(u=>{
+      const ap=(u.nomeApresentacao||u.nome.split(' ')[0])
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
+      const txid=('CAL'+ap+periodoCode).slice(0,25);
+      txidMap[txid]=u;
+    });
+
+    // mapa nome normalizado → usuário (fallback)
+    const nomeMap={};
+    allUsers.filter(u=>u.tipo==='Membro').forEach(u=>{
+      const nNorm=(u.nome||'').toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^A-Z0-9 ]/g,'').trim();
+      nomeMap[nNorm]=u;
+    });
+
+    function normNome(s){
+      return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9 ]/g,'').trim();
+    }
+    function casarNome(desc){
+      const dn=normNome(desc);
+      if(nomeMap[dn]) return nomeMap[dn];
+      // tenta primeiro + último nome
+      return Object.values(nomeMap).find(u=>{
+        const partes=(u.nome||'').toUpperCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z ]/g,'').trim().split(' ');
+        const prim=partes[0], ult=partes[partes.length-1];
+        return prim.length>2&&ult.length>2&&dn.includes(prim)&&dn.includes(ult);
+      })||null;
+    }
+
+    // ── Processa cada transação ──
+    const encontrados=[], naoIdentificados=[];
+
+    for(const bloco of blocos){
+      const trntype=extrairTag(bloco,'TRNTYPE').toUpperCase();
+      // só PIX recebidos (CREDIT ou tipo vazio — algumas corretoras usam CREDIT)
+      if(trntype&&trntype!=='CREDIT'&&!trntype.includes('PIX')) continue;
+      const trnamt=parseFloat(extrairTag(bloco,'TRNAMT').replace(',','.'))||0;
+      if(trnamt<=0) continue; // ignora débitos e zeros
+
+      // data: DTPOSTED = YYYYMMDDHHMMSS ou YYYYMMDD
+      const dtRaw=extrairTag(bloco,'DTPOSTED').slice(0,8);
+      const data=dtRaw.length===8
+        ?`${dtRaw.slice(6,8)}/${dtRaw.slice(4,6)}/${dtRaw.slice(0,4)}`
+        :dtRaw;
+
+      // campos de identificação: MEMO e NAME (a maioria dos bancos usa ambos)
+      const memo=extrairTag(bloco,'MEMO');
+      const name=extrairTag(bloco,'NAME');
+      const fitid=extrairTag(bloco,'FITID'); // ID único da transação
+      const textoCompleto=`${memo} ${name}`.toUpperCase();
+
+      // ── Tentativa 1: txid CAL... no MEMO ou NAME ──
+      let usuario=null;
+      const txMatch=textoCompleto.match(/CAL[A-Z0-9]{4,20}/);
+      if(txMatch) usuario=txidMap[txMatch[0]];
+
+      // ── Tentativa 2: nome do pagador ──
+      if(!usuario&&name) usuario=casarNome(name);
+      if(!usuario&&memo) usuario=casarNome(memo);
+
+      if(usuario){
+        const jaSnap=await getDocs(query(collection(db,'pagamentos'),
+          where('usuarioId','==',usuario.uid),where('periodo','==',periodo)));
+        if(!jaSnap.empty){
+          encontrados.push({usuario,valor:trnamt,data,status:'já registrado',fitid});
+          continue;
+        }
+        await addDoc(collection(db,'pagamentos'),{
+          usuarioId:usuario.uid,
+          usuarioNome:usuario.nome,
+          periodo,
+          valor:trnamt,
+          origem:'ofx',
+          data,
+          fitid,
+          descricaoBanco:`${name||''} ${memo||''}`.trim(),
+          criadoEm:serverTimestamp()
+        });
+        encontrados.push({usuario,valor:trnamt,data,status:'registrado',fitid});
+      }else{
+        naoIdentificados.push({descricao:`${name||''} ${memo||''}`.trim()||'(sem descrição)',valor:trnamt,data,fitid});
+      }
+    }
+
+    loading(false);
+
+    // ── Resultado ──
+    const novos=encontrados.filter(e=>e.status==='registrado');
+    const duplicados=encontrados.filter(e=>e.status==='já registrado');
+    const el=document.getElementById('concilResultado');
+
+    let html='';
+    if(novos.length){
+      html+=`<div class="card" style="background:#E6F7EF;border-color:#9FE1CB;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:#0F6E56;margin-bottom:8px">✅ ${novos.length} pagamento(s) registrado(s)</div>
+        ${novos.map(e=>`<div style="font-size:12px;color:var(--tx);margin-bottom:4px;display:flex;justify-content:space-between">
+          <span>${e.usuario.nomeApresentacao||e.usuario.nome.split(' ')[0]}</span>
+          <span style="color:#0F6E56;font-weight:600">R$ ${e.valor.toFixed(2).replace('.',',')} · ${e.data}</span>
+        </div>`).join('')}
+      </div>`;
+    }
+    if(duplicados.length){
+      html+=`<div class="card" style="background:#F0EEEA;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">⏭️ ${duplicados.length} já registrado(s) anteriormente</div>
+        ${duplicados.map(e=>`<div style="font-size:11px;color:var(--tx2)">${e.usuario.nomeApresentacao||e.usuario.nome.split(' ')[0]} · R$ ${e.valor.toFixed(2).replace('.',',')} · ${e.data}</div>`).join('')}
+      </div>`;
+    }
+    if(naoIdentificados.length){
+      html+=`<div class="card" style="background:#FFF3DC;border-color:#FDDCB5">
+        <div style="font-size:13px;font-weight:600;color:#854F0B;margin-bottom:8px">⚠️ ${naoIdentificados.length} não identificado(s)</div>
+        ${naoIdentificados.map((n,idx)=>{
+          // lista de membros ordenada para associar manualmente
+          const optsHtml=allUsers.filter(u=>u.tipo==='Membro')
+            .sort((a,b)=>(a.nomeApresentacao||a.nome).localeCompare(b.nomeApresentacao||b.nome,'pt-BR'))
+            .map(u=>`<option value="${u.uid}|${u.nome.replace(/"/g,'')}">${u.nomeApresentacao||u.nome.split(' ')[0]}</option>`).join('');
+          return`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
+            <div style="font-size:12px;color:var(--tx);margin-bottom:6px"><strong>${n.descricao}</strong> · R$ ${n.valor.toFixed(2).replace('.',',')} · ${n.data}</div>
+            <div style="display:flex;gap:6px">
+              <select id="selManual${idx}" class="form-control" style="flex:1;font-size:12px;padding:6px 8px">
+                <option value="">Selecione o membro...</option>${optsHtml}
+              </select>
+              <button class="btn-sm ok" style="font-size:11px;padding:5px 10px;flex-shrink:0"
+                onclick="window.associarManual(${idx},'${periodo}',${n.valor},'${n.data}')">
+                <i class="ti ti-check"></i> OK
+              </button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    if(!html) html='<div class="card" style="background:#E6F7EF"><div style="font-size:13px;color:#0F6E56;text-align:center">✅ Todos os pagamentos já estavam registrados</div></div>';
+
+    el.innerHTML=html;
+    await renderPagamentosRegistrados();
+    showToast(`✅ ${novos.length} registrado(s) · ${naoIdentificados.length} pendente(s)`);
+  }catch(e){
+    loading(false);
+    showToast('❌ Erro ao processar OFX: '+e.message);
+    console.error(e);
+  }
+};
+
+window.associarManual=async function(idx,periodo,valor,data){
+  const sel=document.getElementById(`selManual${idx}`);
+  if(!sel||!sel.value){showToast('⚠️ Selecione um membro');return;}
+  const[uid,nome]=sel.value.split('|');
+  loading(true);
+  const jaSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',uid),where('periodo','==',periodo)));
+  if(!jaSnap.empty){loading(false);showToast('⚠️ Já existe pagamento registrado para este membro/período');return;}
+  await addDoc(collection(db,'pagamentos'),{usuarioId:uid,usuarioNome:nome,periodo,valor,origem:'manual_concil',data,criadoEm:serverTimestamp()});
+  // remove o item da tela
+  const item=sel.closest('div[style*="margin-bottom:12px"]');
+  if(item) item.innerHTML=`<div style="font-size:12px;color:#0F6E56">✅ Associado a ${nome.split(' ')[0]}</div>`;
+  await renderPagamentosRegistrados();
+  loading(false);
+  showToast('✅ Pagamento associado!');
+};
+
+window.registrarManualFrom=async function(uid,nome,periodo,valor,data){
+  loading(true);
+  // remove já existentes antes de registrar
+  const jaSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',uid),where('periodo','==',periodo)));
+  if(!jaSnap.empty){loading(false);showToast('⚠️ Pagamento já registrado para este membro/período');return;}
+  await addDoc(collection(db,'pagamentos'),{usuarioId:uid,usuarioNome:nome,periodo,valor,origem:'manual_concil',data,criadoEm:serverTimestamp()});
+  showToast('✅ Registrado manualmente!');
+  await renderPagamentosRegistrados();
+  loading(false);
+};
+
+// Verifica se membro tem pagamento confirmado para um período
+async function membroPagou(usuarioId, periodo){
+  const snap=await getDocs(query(collection(db,'pagamentos'),
+    where('usuarioId','==',usuarioId),where('periodo','==',periodo)));
+  return !snap.empty;
+}
+
 window.gerentePage=function(pageId,btn){
   document.querySelectorAll('#gerenteArea .page').forEach(p=>p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
   document.querySelectorAll('#gerenteNav .bnav-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   if(pageId==='pageGerenteDiaristas')initDiaristasGerente();
+  if(pageId==='pageGerenteConciliacao')initConciliacao();
 };
 
 // DIARISTAS GERENTE — date-aware
 function initDiaristasGerente(){
   const sel=document.getElementById('diaristasJogoSel');
-  const jogosAbertos=allJogos.filter(j=>j.status==='Aberto');
+  const jogosAbertos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'));
   sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogosAbertos.map(j=>`<option value="${j.id}">${j.nome} · ${j.nivel} · ${j.dia}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+    jogosAbertos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
   const selData=document.getElementById('diaristasDataSel');
   selData.innerHTML='<option value="">Selecione uma data...</option>';
   selData.disabled=true;
