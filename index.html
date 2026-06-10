@@ -222,12 +222,18 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <div class="sec-header"><div class="sec-title">Participantes do dia</div></div>
         <div class="card" style="background:#E8F3FE;border-color:#B5D4F4;margin-bottom:12px">
           <div style="font-size:12px;color:#185FA5;line-height:1.5">
-            Selecione o jogo e a data para ver quem está inscrito e se confirmou presença. Membros inscritos podem confirmar ou registrar desistência por data.
+            Selecione o período e o jogo para ver quem está inscrito e se confirmou presença.
           </div>
         </div>
         <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label">Período</label>
+          <select class="form-control" id="participantesPeriodoSel" onchange="filtrarJogosParticipantes()" style="font-size:13px">
+            <option value="">Selecione o período...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
           <label class="form-label">Jogo</label>
-          <select class="form-control" id="participantesJogoSel" onchange="atualizarDatasParticipantes()" style="font-size:13px">
+          <select class="form-control" id="participantesJogoSel" onchange="atualizarDatasParticipantes()" style="font-size:13px" disabled>
             <option value="">Selecione um jogo...</option>
           </select>
         </div>
@@ -237,14 +243,20 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             <option value="">Selecione uma data...</option>
           </select>
         </div>
-        <div id="participantesDiaPanel"><div class="empty"><i class="ti ti-users"></i><p>Selecione o jogo e a data para ver a lista</p></div></div>
+        <div id="participantesDiaPanel"><div class="empty"><i class="ti ti-users"></i><p>Selecione o período e o jogo para ver a lista</p></div></div>
       </div>
 
       <div class="page" id="pageMemberDiaristas">
         <div class="sec-header"><div class="sec-title">Diaristas & Confirmações</div></div>
         <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label">Período</label>
+          <select class="form-control" id="diarPeriodoSelMembro" onchange="filtrarJogosDiaristasMembro()" style="font-size:13px">
+            <option value="">Selecione o período...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
           <label class="form-label">Jogo</label>
-          <select class="form-control" id="diaristasJogoSelMembro" onchange="atualizarDatasDiaristasMembro()" style="font-size:13px">
+          <select class="form-control" id="diaristasJogoSelMembro" onchange="atualizarDatasDiaristasMembro()" style="font-size:13px" disabled>
             <option value="">Selecione um jogo...</option>
           </select>
         </div>
@@ -254,7 +266,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
             <option value="">Selecione uma data...</option>
           </select>
         </div>
-        <div id="diaristaMemberPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div></div>
+        <div id="diaristaMemberPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione o período e o jogo</p></div></div>
       </div>
 
       <div class="page" id="pageMemberDuplas">
@@ -343,8 +355,11 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <div class="page" id="pageGerenteNivel"><div class="sec-header"><div class="sec-title">Solicitações de nível</div></div><div id="nivelSolicList"></div></div>
       <div class="page" id="pageGerenteDiaristas">
         <div class="sec-header"><div class="sec-title">Diaristas & Confirmações</div></div>
+        <div class="form-group" style="margin-bottom:8px"><label class="form-label">Período</label>
+          <select class="form-control" id="diarPeriodoSel" onchange="filtrarJogosDiaristasGerente()" style="font-size:13px"><option value="">Selecione o período...</option></select>
+        </div>
         <div class="form-group" style="margin-bottom:8px"><label class="form-label">Jogo</label>
-          <select class="form-control" id="diaristasJogoSel" onchange="atualizarDatasGerente()" style="font-size:13px"><option value="">Selecione um jogo...</option></select>
+          <select class="form-control" id="diaristasJogoSel" onchange="atualizarDatasGerente()" style="font-size:13px" disabled><option value="">Selecione um jogo...</option></select>
         </div>
         <div class="form-group" style="margin-bottom:10px"><label class="form-label">Data</label>
           <select class="form-control" id="diaristasDataSel" onchange="carregarDiaristas()" style="font-size:13px" disabled><option value="">Selecione uma data...</option></select>
@@ -353,7 +368,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           <button id="tabDiaristaMembros" onclick="switchDiaristaTab('membros')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--tx)">Membros inscritos</button>
           <button id="tabDiaristaReqs" onclick="switchDiaristaTab('reqs')" style="flex:1;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--tx2)">Solicit. diaristas</button>
         </div>
-        <div id="diaristaMembrosPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div></div>
+        <div id="diaristaMembrosPanel"><div class="empty"><i class="ti ti-calendar"></i><p>Selecione o período e o jogo</p></div></div>
         <div id="diaristaSolicPanel" style="display:none"></div>
       </div>
       <div class="page" id="pageGerenteRelatorio">
@@ -493,6 +508,52 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
           </button>
         </div>
         <div id="concilResultado"></div>
+
+        <!-- REGISTRO MANUAL -->
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Registrar pagamento manualmente</div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Membro</label>
+              <select class="form-control" id="manualMembro" style="font-size:13px">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Período</label>
+              <select class="form-control" id="manualPeriodo" style="font-size:13px">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-control" id="manualTipo" style="font-size:13px">
+                <option value="mensalidade">Mensalidade</option>
+                <option value="diaria">Diária</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Valor (R$)</label>
+              <input class="form-control" id="manualValor" type="number" step="0.01" min="0" placeholder="0,00" style="font-size:13px">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Data do pagamento</label>
+              <input class="form-control" id="manualData" type="date" style="font-size:13px">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Observação (opcional)</label>
+              <input class="form-control" id="manualObs" placeholder="Ex: Dinheiro em mãos" style="font-size:13px">
+            </div>
+          </div>
+          <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:4px" onclick="window.salvarPagamentoManual()">
+            <i class="ti ti-plus"></i> Registrar pagamento
+          </button>
+        </div>
+
         <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Pagamentos registrados</div>
         <div style="display:flex;gap:6px;margin-bottom:10px">
           <select class="form-control" id="concilFiltroMes" style="flex:1;font-size:13px" onchange="window.renderPagamentosRegistrados()">
@@ -1166,15 +1227,45 @@ function dataParaKey(d){
 }
 
 window.initParticipantesMembro=function(){
-  const sel=document.getElementById('participantesJogoSel');
+  const selPeriodo=document.getElementById('participantesPeriodoSel');
+  const selJogo=document.getElementById('participantesJogoSel');
   const selData=document.getElementById('participantesDataSel');
-  const periodo=periodoVigente();
-  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome)));
-  sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+
+  // períodos únicos dos jogos abertos — ordenados
+  const periodos=[...new Set(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno).map(j=>j.mesAno))].sort().reverse();
+  selPeriodo.innerHTML='<option value="">Selecione o período...</option>'+
+    periodos.map(p=>`<option value="${p}">${p}</option>`).join('');
+
+  // pré-seleciona período vigente se existir
+  const pv=periodoVigente();
+  if(pv&&periodos.includes(pv.nome)) selPeriodo.value=pv.nome;
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selJogo.disabled=true;
   selData.innerHTML='<option value="">Selecione uma data...</option>';
   selData.disabled=true;
-  document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione o jogo e a data</p></div>';
+  document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione o período e o jogo</p></div>';
+
+  // se período pré-selecionado, já filtra jogos
+  if(selPeriodo.value) filtrarJogosParticipantes();
+};
+
+window.filtrarJogosParticipantes=function(){
+  const periodo=document.getElementById('participantesPeriodoSel').value;
+  const selJogo=document.getElementById('participantesJogoSel');
+  const selData=document.getElementById('participantesDataSel');
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('participantesDiaPanel').innerHTML='<div class="empty"><i class="ti ti-users"></i><p>Selecione um jogo</p></div>';
+
+  if(!periodo){selJogo.disabled=true;return;}
+
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno===periodo));
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>'+
+    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}</option>`).join('');
+  selJogo.disabled=false;
 };
 
 // Preenche o select de datas quando o jogo é escolhido
@@ -1418,15 +1509,46 @@ window.confirmarPresencaData=async function(jogoId,data,confirmado){
 
 // ══ DIARISTAS MEMBRO — filtrado por nível + datas ══
 window.initDiaristasMembro=function(){
-  const sel=document.getElementById('diaristasJogoSelMembro');
+  const selPeriodo=document.getElementById('diarPeriodoSelMembro');
+  const selJogo=document.getElementById('diaristasJogoSelMembro');
   const selData=document.getElementById('diaristasDataSelMembro');
-  const periodo=periodoVigente();
-  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.nivel===currentUser.nivel&&(!periodo||j.mesAno===periodo.nome)));
-  sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+
+  // períodos únicos dos jogos do nível do membro
+  const periodos=[...new Set(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno&&j.nivel===currentUser.nivel).map(j=>j.mesAno))].sort().reverse();
+  selPeriodo.innerHTML='<option value="">Selecione o período...</option>'+
+    periodos.map(p=>`<option value="${p}">${p}</option>`).join('');
+
+  // pré-seleciona período vigente
+  const pv=periodoVigente();
+  if(pv&&periodos.includes(pv.nome)) selPeriodo.value=pv.nome;
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selJogo.disabled=true;
   selData.innerHTML='<option value="">Selecione uma data...</option>';
   selData.disabled=true;
-  document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div>';
+  document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o período e o jogo</p></div>';
+
+  if(selPeriodo.value) filtrarJogosDiaristasMembro();
+};
+
+window.filtrarJogosDiaristasMembro=function(){
+  const periodo=document.getElementById('diarPeriodoSelMembro').value;
+  const selJogo=document.getElementById('diaristasJogoSelMembro');
+  const selData=document.getElementById('diaristasDataSelMembro');
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('diaristaMemberPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo</p></div>';
+
+  if(!periodo){selJogo.disabled=true;return;}
+
+  // diaristas vê todos os jogos do período (não filtra por nível — pode solicitar diária em qualquer nível)
+  // confirmações de presença só no seu nível
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno===periodo&&j.nivel===currentUser.nivel));
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>'+
+    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}</option>`).join('');
+  selJogo.disabled=false;
 };
 
 window.atualizarDatasDiaristasMembro=function(){
@@ -1919,13 +2041,69 @@ window.inativarMembro=async function(uid){const u=allUsers.find(x=>x.uid===uid);
 async function initConciliacao(){
   const sel=document.getElementById('concilPeriodo');
   const selFiltro=document.getElementById('concilFiltroMes');
+  const selManualPeriodo=document.getElementById('manualPeriodo');
+  const selManualMembro=document.getElementById('manualMembro');
+
   const meses=[...new Set(allPeriodos.map(p=>p.nome).filter(Boolean))].sort().reverse();
-  sel.innerHTML='<option value="">Selecione o período...</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  const opsMeses='<option value="">Selecione o período...</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.innerHTML=opsMeses;
   selFiltro.innerHTML='<option value="">Todos os períodos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(selManualPeriodo) selManualPeriodo.innerHTML=opsMeses;
+
+  // pré-seleciona período vigente
+  const pv=periodoVigente();
+  if(pv){sel.value=pv.nome;if(selManualPeriodo)selManualPeriodo.value=pv.nome;}
+
+  // popula membros no form manual
+  if(selManualMembro){
+    const membros=allUsers.filter(u=>u.tipo==='Membro'&&u.status==='Ativo')
+      .sort((a,b)=>(a.nomeApresentacao||a.nome).localeCompare(b.nomeApresentacao||b.nome,'pt-BR'));
+    selManualMembro.innerHTML='<option value="">Selecione o membro...</option>'+
+      membros.map(u=>`<option value="${u.uid}|${u.nome}">${u.nomeApresentacao||u.nome.split(' ')[0]} — ${u.nome}</option>`).join('');
+  }
+  // data padrão = hoje
+  const manualData=document.getElementById('manualData');
+  if(manualData&&!manualData.value) manualData.value=new Date().toISOString().slice(0,10);
+
   await renderPagamentosRegistrados();
 }
 
-// Registra pagamento manualmente se necessário
+window.salvarPagamentoManual=async function(){
+  const membroVal=document.getElementById('manualMembro').value;
+  const periodo=document.getElementById('manualPeriodo').value;
+  const tipo=document.getElementById('manualTipo').value;
+  const valor=parseFloat(document.getElementById('manualValor').value)||0;
+  const data=document.getElementById('manualData').value;
+  const obs=document.getElementById('manualObs').value.trim();
+  if(!membroVal){showToast('⚠️ Selecione o membro');return;}
+  if(!periodo){showToast('⚠️ Selecione o período');return;}
+  if(valor<=0){showToast('⚠️ Informe o valor');return;}
+  if(!data){showToast('⚠️ Informe a data');return;}
+  const[uid,nome]=membroVal.split('|');
+  // para mensalidade avisa se já existe mas permite complemento
+  if(tipo==='mensalidade'){
+    const jaSnap=await getDocs(query(collection(db,'pagamentos'),
+      where('usuarioId','==',uid),where('periodo','==',periodo),where('tipo','==','mensalidade')));
+    if(!jaSnap.empty){
+      const totalJa=jaSnap.docs.reduce((s,d)=>s+Number(d.data().valor||0),0);
+      if(!confirm(`Já existe R$ ${totalJa.toFixed(2).replace('.',',')} de mensalidade para ${nome.split(' ')[0]} em ${periodo}.\nRegistrar mais R$ ${valor.toFixed(2).replace('.',',')} como complemento?`))return;
+    }
+  }
+  loading(true);
+  await addDoc(collection(db,'pagamentos'),{
+    usuarioId:uid,usuarioNome:nome,periodo,valor,tipo,origem:'manual',
+    data:data.split('-').reverse().join('/'),
+    observacao:obs||'',criadoEm:serverTimestamp()
+  });
+  document.getElementById('manualMembro').value='';
+  document.getElementById('manualValor').value='';
+  document.getElementById('manualObs').value='';
+  loading(false);
+  showToast('✅ Pagamento registrado!');
+  await renderPagamentosRegistrados();
+};
+
+// Registra pagamento manualmente se necessário (legado)
 window.registrarPagamentoManual=async function(usuarioId,usuarioNome,periodo,valor){
   if(!confirm(`Confirmar pagamento de R$ ${valor.toFixed(2).replace('.',',')} para ${usuarioNome} em ${periodo}?`))return;
   loading(true);
@@ -1981,7 +2159,7 @@ window.renderPagamentosRegistrados=async function(){
       <div class="card-row">
         <div>
           <div class="card-title">${nome}</div>
-          <div class="card-sub">${p.periodo} · ${p.data||''} · ${origemLabel}</div>
+          <div class="card-sub">${p.periodo} · ${p.data||''} · ${origemLabel}${p.observacao?` · ${p.observacao}`:''}</div>
         </div>
         <span class="badge bg" style="white-space:nowrap">R$ ${Number(p.valor||0).toFixed(2).replace('.',',')}</span>
       </div>
@@ -2274,17 +2452,46 @@ window.gerentePage=function(pageId,btn){
   if(pageId==='pageGerenteConciliacao')initConciliacao();
 };
 
-// DIARISTAS GERENTE — date-aware
+// DIARISTAS GERENTE — date-aware com filtro de período
 function initDiaristasGerente(){
-  const sel=document.getElementById('diaristasJogoSel');
-  const jogosAbertos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'));
-  sel.innerHTML='<option value="">Selecione um jogo...</option>'+
-    jogosAbertos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}${j.mesAno?' · '+j.mesAno:''}</option>`).join('');
+  const selPeriodo=document.getElementById('diarPeriodoSel');
+  const selJogo=document.getElementById('diaristasJogoSel');
   const selData=document.getElementById('diaristasDataSel');
+
+  const periodos=[...new Set(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno).map(j=>j.mesAno))].sort().reverse();
+  selPeriodo.innerHTML='<option value="">Selecione o período...</option>'+
+    periodos.map(p=>`<option value="${p}">${p}</option>`).join('');
+
+  // pré-seleciona período vigente
+  const pv=periodoVigente();
+  if(pv&&periodos.includes(pv.nome)) selPeriodo.value=pv.nome;
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selJogo.disabled=true;
   selData.innerHTML='<option value="">Selecione uma data...</option>';
   selData.disabled=true;
-  document.getElementById('diaristaMembrosPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o jogo e a data</p></div>';
+  document.getElementById('diaristaMembrosPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione o período e o jogo</p></div>';
+
+  if(selPeriodo.value) filtrarJogosDiaristasGerente();
 }
+
+window.filtrarJogosDiaristasGerente=function(){
+  const periodo=document.getElementById('diarPeriodoSel').value;
+  const selJogo=document.getElementById('diaristasJogoSel');
+  const selData=document.getElementById('diaristasDataSel');
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selData.innerHTML='<option value="">Selecione uma data...</option>';
+  selData.disabled=true;
+  document.getElementById('diaristaMembrosPanel').innerHTML='<div class="empty"><i class="ti ti-calendar"></i><p>Selecione um jogo</p></div>';
+
+  if(!periodo){selJogo.disabled=true;return;}
+
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno===periodo));
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>'+
+    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}</option>`).join('');
+  selJogo.disabled=false;
+};
 
 window.atualizarDatasGerente=function(){
   const jogoId=document.getElementById('diaristasJogoSel').value;
