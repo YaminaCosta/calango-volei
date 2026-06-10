@@ -855,10 +855,19 @@ async function renderMinhasInscricoes(inscricoes, periodoAtual){
   const pixCfg=await carregarConfigPix();
 
   // calcula saldo devedor: total das inscrições - pagamentos de mensalidade já registrados
+  // BUG1 FIX: sempre calcula, mesmo sem filtro de período
   let jaPagei=0;
-  if(filtroMes){
+  const periodoParaPagamento=filtroMes||(mesesDisp.length===1?mesesDisp[0]:'');
+  if(periodoParaPagamento){
     const pagSnap=await getDocs(query(collection(db,'pagamentos'),
-      where('usuarioId','==',currentUID),where('periodo','==',filtroMes)));
+      where('usuarioId','==',currentUID),where('periodo','==',periodoParaPagamento)));
+    pagSnap.docs.forEach(d=>{
+      const pd=d.data();
+      if(pd.tipo!=='diaria') jaPagei+=Number(pd.valor||0);
+    });
+  }else{
+    // sem filtro e múltiplos períodos: soma pagamentos de mensalidade de todos os períodos
+    const pagSnap=await getDocs(query(collection(db,'pagamentos'),where('usuarioId','==',currentUID)));
     pagSnap.docs.forEach(d=>{
       const pd=d.data();
       if(pd.tipo!=='diaria') jaPagei+=Number(pd.valor||0);
@@ -1334,12 +1343,35 @@ window.carregarParticipantesDia=async function(){
       html+='</div>';
     }
 
-    // diaristas aprovados
+    // diaristas aprovados — com controle de pagamento
     if(diaristasAprovados.length){
-      html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Diaristas aprovados (${diaristasAprovados.length})</div>`;
-      html+='<div class="card" style="padding:0;overflow:hidden">';
-      html+=diaristasAprovados.map(d=>{const nomeD=allUsers.find(u=>u.uid===d.usuarioId)?.nomeApresentacao||d.usuarioNome.split(' ')[0];return`<div class="part-item"><span class="part-nome">${nomeD}</span><span class="part-status" style="background:#FFF3DC;color:#854F0B">Diarista · R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</span></div>`;}).join('');
-      html+='</div>';
+      // busca pagamentos de diária para este período
+      const pagDiarPeriodoSnap=await getDocs(query(collection(db,'pagamentos'),
+        where('periodo','==',periodoJogo),where('tipo','==','diaria')));
+      const pagDiarMap={};
+      pagDiarPeriodoSnap.docs.forEach(d=>{pagDiarMap[d.data().usuarioId]=true;});
+
+      const diaristasComPag=diaristasAprovados.filter(d=>pagDiarMap[d.usuarioId]);
+      const diaristaSemPag=diaristasAprovados.filter(d=>!pagDiarMap[d.usuarioId]);
+
+      if(diaristasComPag.length){
+        html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Diaristas — pagamento OK (${diaristasComPag.length})</div>`;
+        html+='<div class="card" style="padding:0;overflow:hidden">';
+        html+=diaristasComPag.map(d=>{
+          const nomeD=allUsers.find(u=>u.uid===d.usuarioId)?.nomeApresentacao||d.usuarioNome.split(' ')[0];
+          return`<div class="part-item"><span class="part-nome">${nomeD} <span style="font-size:10px;color:#0F6E56">💚</span></span><span class="part-status part-confirmado">Diarista · R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</span></div>`;
+        }).join('');
+        html+='</div>';
+      }
+      if(diaristaSemPag.length){
+        html+=`<div style="font-size:11px;font-weight:600;color:#854F0B;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Diaristas — aguardando pagamento (${diaristaSemPag.length})</div>`;
+        html+='<div class="card" style="padding:0;overflow:hidden;border-color:#FDDCB5">';
+        html+=diaristaSemPag.map(d=>{
+          const nomeD=allUsers.find(u=>u.uid===d.usuarioId)?.nomeApresentacao||d.usuarioNome.split(' ')[0];
+          return`<div class="part-item"><span class="part-nome" style="color:#854F0B">${nomeD}</span><span class="part-status" style="background:#FFF3DC;color:#854F0B">⚠️ Sem pgto · R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</span></div>`;
+        }).join('');
+        html+='</div>';
+      }
     }
 
     // botão de confirmação do membro logado (só se inscrito E com pagamento)
@@ -1454,7 +1486,26 @@ window.carregarInfoDiaMembro=async function(){
     }else{
       html+=`<div style="font-size:13px;font-weight:500;color:var(--tx);margin-bottom:8px">Solicitar vaga de diarista</div>`;
       if(meuRegistro){
-        html+=`<div class="card" style="background:${meuRegistro.status==='Aprovado'?'#E6F7EF':meuRegistro.status==='Rejeitado'?'#FEEEEE':'#FFF3DC'}"><div style="font-size:14px;font-weight:600;margin-bottom:3px">Solicitação de diarista</div><div style="font-size:13px">Status: <strong>${meuRegistro.status}</strong></div><div style="font-size:12px;color:var(--tx2);margin-top:3px">Taxa: R$ ${Number(meuRegistro.taxa||0).toFixed(2).replace('.',',')}</div></div>`;
+        const statusDiar=meuRegistro.status||'Pendente';
+        const taxaDiar=Number(meuRegistro.taxa||0);
+        // verifica se já pagou a diária
+        const pagDiarSnap=await getDocs(query(collection(db,'pagamentos'),
+          where('usuarioId','==',currentUID),where('periodo','==',jogo.mesAno||''),where('tipo','==','diaria')));
+        const jaPagouDiaria=!pagDiarSnap.empty;
+        const pixCfgDiar=await carregarConfigPix();
+        html+=`<div class="card" style="background:${statusDiar==='Aprovado'?'#E6F7EF':statusDiar==='Rejeitado'?'#FEEEEE':'#FFF3DC'}">
+          <div style="font-size:14px;font-weight:600;margin-bottom:3px">Solicitação de diarista</div>
+          <div style="font-size:13px">Status: <strong>${statusDiar}</strong></div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:3px">Taxa: R$ ${taxaDiar.toFixed(2).replace('.',',')}</div>
+          ${statusDiar==='Aprovado'&&taxaDiar>0&&pixCfgDiar?.chave?
+            jaPagouDiaria
+              ?'<div style="font-size:12px;color:#0F6E56;margin-top:8px;font-weight:500">✅ Pagamento da diária confirmado</div>'
+              :`<button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:10px"
+                  onclick="window.abrirPixDiaria('${jogoId}',${taxaDiar},'${jogo.mesAno||''}')">
+                  <i class="ti ti-brand-whatsapp"></i> PIX diária · R$ ${taxaDiar.toFixed(2).replace('.',',')}
+                </button>`
+            :''}
+        </div>`;
       }else if(jogo.vagasDiaristas!=='sim'){
         html+=`<div class="card" style="background:#FEEEEE"><div style="font-size:13px;color:#A32D2D;font-weight:500">❌ Vagas fechadas</div><div style="font-size:12px;color:#A32D2D;margin-top:4px">O gerente ainda não abriu vagas para diaristas neste jogo.</div></div>`;
       }else{
@@ -1476,9 +1527,38 @@ window.membroConfirmaPresenca=async function(jogoId,confirmado){
 window.solicitarDiaria=async function(jogoId,taxa){
   loading(true);
   const snap=await getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId)));
-  if(snap.docs.find(d=>d.data().usuarioId===currentUID)){loading(false);showToast('⚠️ Já tem solicitação!');return;}
+  if(snap.docs.find(d=>d.data().usuarioId===currentUID&&d.data().tipo==='diarista')){loading(false);showToast('⚠️ Já tem solicitação!');return;}
   await addDoc(collection(db,'diaristas'),{jogoId,usuarioId:currentUID,usuarioNome:currentUser.nome,tipo:'diarista',taxa:taxa||0,status:'Pendente',criadoEm:serverTimestamp()});
   loading(false);showToast('✅ Solicitação enviada!');await carregarInfoDiaMembro();
+};
+
+window.abrirPixDiaria=async function(jogoId,taxa,periodo){
+  const cfg=await carregarConfigPix();
+  if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
+  const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
+  const periodoCode=(periodo||'').replace('/','');
+  const txid=('CALD'+apelido+(periodoCode||jogoId.slice(0,6))).toUpperCase().slice(0,25);
+  const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',taxa,txid);
+  const jogo=allJogos.find(j=>j.id===jogoId);
+  document.getElementById('modalPixContent').innerHTML=`
+    <div class="card" style="background:#FFF3DC;text-align:center;margin-bottom:14px">
+      <div style="font-size:12px;color:#854F0B;margin-bottom:4px">Pagamento de diária</div>
+      <div style="font-size:28px;font-weight:700;color:#854F0B">R$ ${taxa.toFixed(2).replace('.',',')}</div>
+      <div style="font-size:12px;color:#854F0B;margin-top:4px">${jogo?.nome||''} · ${periodo||''}</div>
+      <div style="font-size:11px;color:#854F0B;margin-top:4px">Identificação: <strong>${txid}</strong></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
+    <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
+    <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#854F0B;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="ti ti-copy"></i> Copiar código PIX
+    </button>
+    <div style="background:#FFF3DC;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:12px;color:#854F0B;line-height:1.5">
+      <strong>💡 Identificação no extrato:</strong> ${txid}<br>
+      Abra o banco → PIX → Pagar → Copia e Cola
+    </div>`;
+  document.getElementById('modalPix').classList.add('open');
 };
 
 // ══ GERENTE ══
