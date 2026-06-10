@@ -193,11 +193,19 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       </div>
       <div class="page" id="pageMemberInscricoes">
         <div class="sec-header"><div class="sec-title">Minhas inscrições</div></div>
-        <div class="card" style="background:#FEF0E6;border-color:#FDDCB5;margin-bottom:14px">
+        <!-- Filtro de período -->
+        <div class="form-group" style="margin-bottom:10px">
+          <select class="form-control" id="inscricoesPeriodoFiltro" onchange="filtrarInscricoesMembro()" style="font-size:13px">
+            <option value="">Todos os períodos</option>
+          </select>
+        </div>
+        <div class="card" style="background:#FEF0E6;border-color:#FDDCB5;margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div><div style="font-size:12px;color:#854F0B;font-weight:500">Total a pagar</div><div style="font-size:22px;font-weight:700;color:var(--or)" id="totalMesInscricoes">R$ 0,00</div></div>
             <i class="ti ti-cash" style="font-size:32px;color:var(--or);opacity:.4"></i>
           </div>
+          <!-- botão PIX total -->
+          <div id="pixTotalBtn"></div>
         </div>
         <div id="minhasInscricoesList"></div>
       </div>
@@ -291,7 +299,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         <button class="btn-action" onclick="gerentePage('pageGerenteRelatorio',document.querySelectorAll('#gerenteNav .bnav-btn')[4])"><div class="bai"><i class="ti ti-report-analytics"></i></div><div class="bat"><div class="bat-title">Relatório mensal</div><div class="bat-sub">Inscritos e valores</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerenteJogos',document.querySelectorAll('#gerenteNav .bnav-btn')[5])"><div class="bai"><i class="ti ti-calendar-plus"></i></div><div class="bat"><div class="bat-title">Configurar jogos</div><div class="bat-sub">Calendário e valores</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerentePeriodos',document.querySelectorAll('#gerenteNav .bnav-btn')[6])"><div class="bai"><i class="ti ti-calendar-stats"></i></div><div class="bat"><div class="bat-title">Períodos de inscrição</div><div class="bat-sub">Vigências</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
-        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[7])"><div class="bai"><i class="ti ti-users"></i></div><div class="bat"><div class="bat-title">Gerenciar membros</div><div class="bat-sub" id="hintMembros">—</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
+        <button class="btn-action" onclick="gerentePage('pageGerenteUsuarios',document.querySelectorAll('#gerenteNav .bnav-btn')[7]);recarregarMembros()"><div class="bai"><i class="ti ti-users"></i></div><div class="bat"><div class="bat-title">Gerenciar membros</div><div class="bat-sub" id="hintMembros">—</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
         <button class="btn-action" onclick="gerentePage('pageGerenteConfig',document.querySelectorAll('#gerenteNav .bnav-btn')[8])"><div class="bai"><i class="ti ti-settings"></i></div><div class="bat"><div class="bat-title">Configurações</div><div class="bat-sub">PIX e dados do clube</div></div><i class="ti ti-chevron-right" style="color:#ccc"></i></button>
       </div>
       <div class="page" id="pageGerenteInscricoes">
@@ -440,7 +448,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <button class="bnav-btn" onclick="gerentePage('pageGerenteRelatorio',this)"><i class="ti ti-report-analytics"></i>Relatório</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteJogos',this)"><i class="ti ti-calendar"></i>Jogos</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerentePeriodos',this)"><i class="ti ti-calendar-stats"></i>Períodos</button>
-      <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this)"><i class="ti ti-users"></i>Membros</button>
+      <button class="bnav-btn" onclick="gerentePage('pageGerenteUsuarios',this);recarregarMembros()"><i class="ti ti-users"></i>Membros</button>
       <button class="bnav-btn" onclick="gerentePage('pageGerenteConfig',this);carregarConfig()"><i class="ti ti-settings"></i>Config</button>
     </div>
   </div>
@@ -645,8 +653,17 @@ async function initMemberPage(){
   ]);
   const inscricoes=inscSnap.docs.map(d=>({id:d.id,...d.data()}));
   const duplas=dupSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+  // Fix 3: totalMes — usa período vigente se existir, senão soma TODAS as aprovadas
   const periodoNome=periodo?.nome||'';
-  let totalMes=0;inscricoes.forEach(i=>{if(i.status==='Aprovado'&&i.jogoMesAno===periodoNome)totalMes+=Number(i.jogoValor||0);});
+  let totalMes=0;
+  inscricoes.forEach(i=>{
+    if(i.status==='Aprovado'){
+      if(periodoNome && i.jogoMesAno===periodoNome) totalMes+=Number(i.jogoValor||0);
+      else if(!periodoNome) totalMes+=Number(i.jogoValor||0);
+    }
+  });
+
   document.getElementById('welcomeName').textContent='Olá, '+(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])+'! 👋';
   document.getElementById('welcomeLevel').textContent='Nível: '+currentUser.nivel+(periodo?' · Período '+periodo.nome+' · '+formatDate(periodo.dataInicio)+' a '+formatDate(periodo.dataFim):' · Nenhum período vigente');
   document.getElementById('wbJogos').textContent=jogosNivel.length;
@@ -654,7 +671,7 @@ async function initMemberPage(){
   document.getElementById('wbTotal').textContent=totalMes.toFixed(2).replace('.',',');
   document.getElementById('badgeJogosCount').textContent=jogosNivel.length+' disponíveis';
   renderJogosMember(inscricoes,periodo);
-  renderMinhasInscricoes(inscricoes);
+  renderMinhasInscricoes(inscricoes,periodo);
   renderMinhasDuplas(duplas);
   renderPerfil();
 }
@@ -711,24 +728,57 @@ window.confirmarInscricao=async function(){
   await initMemberPage();
 };
 
-async function renderMinhasInscricoes(inscricoes){
+async function renderMinhasInscricoes(inscricoes, periodoAtual){
   const el=document.getElementById('minhasInscricoesList');
-  if(!inscricoes.length){el.innerHTML='<div class="empty"><i class="ti ti-calendar-x"></i><p>Você não tem inscrições ainda.</p></div>';return;}
-  let total=0;inscricoes.forEach(i=>{if(i.status==='Aprovado')total+=Number(i.jogoValor||0);});
+
+  // popula o select de períodos
+  const selPeriodo=document.getElementById('inscricoesPeriodoFiltro');
+  const mesesDisp=[...new Set(inscricoes.map(i=>i.jogoMesAno).filter(Boolean))].sort().reverse();
+  const periodoNomeAtual=periodoAtual?.nome||'';
+  // mantém seleção atual ou pré-seleciona período vigente
+  const selAtual=selPeriodo.value;
+  selPeriodo.innerHTML='<option value="">Todos os períodos</option>'+
+    mesesDisp.map(m=>`<option value="${m}" ${(selAtual?selAtual===m:m===periodoNomeAtual)?'selected':''}>${m}</option>`).join('');
+
+  const filtroMes=selPeriodo.value;
+  const inscFiltradas=filtroMes?inscricoes.filter(i=>i.jogoMesAno===filtroMes):inscricoes;
+
+  // total aprovado do período selecionado
+  let total=0;inscFiltradas.forEach(i=>{if(i.status==='Aprovado')total+=Number(i.jogoValor||0);});
   document.getElementById('totalMesInscricoes').textContent='R$ '+total.toFixed(2).replace('.',',');
 
   // carrega config PIX
-  const pixCfg = await carregarConfigPix();
+  const pixCfg=await carregarConfigPix();
 
-  el.innerHTML=inscricoes.map(i=>{
+  // botão PIX para pagar o total do período
+  const pixTotalDiv=document.getElementById('pixTotalBtn');
+  if(pixTotalDiv){
+    if(total>0&&pixCfg?.chave){
+      const label=filtroMes?`Período ${filtroMes}`:'todas as inscrições';
+      pixTotalDiv.innerHTML=`<button class="btn-sm" style="margin-top:10px;width:100%;justify-content:center;background:#0F6E56;color:#fff;border-color:#0F6E56"
+        onclick="window.abrirPixTotal(${total},'${label}')">
+        <i class="ti ti-brand-whatsapp" style="font-size:14px"></i> PIX total · R$ ${total.toFixed(2).replace('.',',')}
+      </button>`;
+    }else{
+      pixTotalDiv.innerHTML='';
+    }
+  }
+
+  if(!inscFiltradas.length){
+    el.innerHTML=filtroMes
+      ?`<div class="empty"><i class="ti ti-calendar-x"></i><p>Nenhuma inscrição no período ${filtroMes}.</p></div>`
+      :'<div class="empty"><i class="ti ti-calendar-x"></i><p>Você não tem inscrições ainda.</p></div>';
+    return;
+  }
+
+  el.innerHTML=inscFiltradas.map(i=>{
     const bc=i.status==='Aprovado'?'bg':i.status==='Rejeitado'?'br':'ba';
     const p=i.jogoTipo==='Dupla'&&i.parceiroNome?`<div style="font-size:11px;color:var(--tx2);margin-top:3px">👥 com ${i.parceiroNome.split(' ')[0]}</div>`:'';
     const cancelBtn=i.status==='Pendente'
       ?`<button class="btn-sm no" style="margin-top:10px;font-size:12px;width:100%;justify-content:center" onclick="window.cancelarInscricao('${i.id}','${i.jogoNome}')"><i class="ti ti-x"></i> Cancelar inscrição</button>`:'';
-    // botão PIX só para aprovadas e se chave configurada
     const pixBtn=(i.status==='Aprovado'&&pixCfg?.chave)
-      ?`<button class="btn-sm" style="margin-top:10px;width:100%;justify-content:center;background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB" onclick="window.abrirPix('${i.id}','${i.jogoNome}',${Number(i.jogoValor||0)})">
-          <i class="ti ti-paw" style="font-size:14px"></i> Pagar via PIX · R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}
+      ?`<button class="btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:#E6F7EF;color:#0F6E56;border-color:#9FE1CB" onclick="window.abrirPix('${i.id}','${i.jogoNome}',${Number(i.jogoValor||0)})">
+          <i class="ti ti-qrcode" style="font-size:13px"></i> PIX · R$ ${Number(i.jogoValor||0).toFixed(2).replace('.',',')}
         </button>`:'';
     return `<div class="card">
       <div class="card-row"><div><div class="card-title">${i.jogoNome}</div><div class="card-sub">${i.jogoMesAno||''}</div>${p}</div><span class="badge ${bc}">${i.status}</span></div>
@@ -737,6 +787,37 @@ async function renderMinhasInscricoes(inscricoes){
     </div>`;
   }).join('');
 }
+
+// filtra inscrições sem recarregar do Firebase
+window.filtrarInscricoesMembro=async function(){
+  // busca do cache — relê o que já foi carregado
+  const inscSnap=await getDocs(query(collection(db,'inscricoes'),where('usuarioId','==',currentUID)));
+  const inscricoes=inscSnap.docs.map(d=>({id:d.id,...d.data()}));
+  await renderMinhasInscricoes(inscricoes,periodoVigente());
+};
+
+// PIX para o total do período
+window.abrirPixTotal=async function(total,label){
+  const cfg=await carregarConfigPix();
+  if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
+  const txid='CALPERIODO'+Date.now().toString(36).toUpperCase().slice(-8);
+  const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',total,txid);
+  document.getElementById('modalPixContent').innerHTML=`
+    <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
+      <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">Total a pagar — ${label}</div>
+      <div style="font-size:28px;font-weight:700;color:#0F6E56">R$ ${total.toFixed(2).replace('.',',')}</div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">Código PIX Copia e Cola</div>
+    <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${codigo}</div>
+    <button onclick="window.copiarPix('${codigo}')" style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="ti ti-copy"></i> Copiar código PIX
+    </button>
+    <div style="font-size:12px;color:var(--tx2);margin-top:12px;line-height:1.6;text-align:center">
+      Abra o app do seu banco → PIX → Pagar → Copia e Cola<br>
+      <strong>Favorecido:</strong> ${cfg.nome||'Calango Vôlei'}
+    </div>`;
+  document.getElementById('modalPix').classList.add('open');
+};
 
 window.cancelarInscricao=async function(inscId,jogoNome){
   if(!confirm(`Cancelar inscrição em "${jogoNome}"?\n\nSó inscrições Pendentes podem ser canceladas pelo membro.`))return;
@@ -902,7 +983,16 @@ async function renderMinhasDuplas(duplas){
   el.innerHTML=duplas.map(d=>{const nomes=d.membros.map(uid=>{const u=allUsers.find(x=>x.uid===uid);return u?u.nome.split(' ')[0]:'?';}).join(' + ');return`<div class="card"><div class="card-row"><div><div class="card-title">${d.nome}</div><div class="card-sub">${nomes}</div></div><span class="badge ${d.status==='Ativa'?'bg':'bgy'}">${d.status}</span></div></div>`;}).join('');
 }
 
-window.openModalDupla=function(){document.getElementById('duplaJogador2').innerHTML='<option value="">— Selecione —</option>'+allUsers.filter(u=>u.uid!==currentUID&&u.tipo==='Membro').map(u=>`<option value="${u.uid}">${u.nome} (${u.nivel})</option>`).join('');document.getElementById('duplaNome').value='';document.getElementById('modalDupla').classList.add('open');};
+window.openModalDupla=function(){
+  const parceiros=allUsers
+    .filter(u=>u.uid!==currentUID&&u.tipo==='Membro'&&u.status==='Ativo')
+    .sort((a,b)=>(a.nomeApresentacao||a.nome).localeCompare(b.nomeApresentacao||b.nome,'pt-BR'));
+  document.getElementById('duplaJogador2').innerHTML=
+    '<option value="">— Selecione o(a) parceiro(a) —</option>'+
+    parceiros.map(u=>`<option value="${u.uid}">${u.nomeApresentacao||u.nome.split(' ')[0]} (${u.nivel})</option>`).join('');
+  document.getElementById('duplaNome').value='';
+  document.getElementById('modalDupla').classList.add('open');
+};
 window.confirmarDupla=async function(){const nome=document.getElementById('duplaNome').value.trim();const j2=document.getElementById('duplaJogador2').value;if(!nome||!j2){showToast('⚠️ Preencha todos os campos');return;}loading(true);await addDoc(collection(db,'duplas'),{nome,membros:[currentUID,j2],status:'Ativa',criadoPor:currentUID,criadoEm:serverTimestamp()});closeModal('modalDupla');loading(false);showToast('✅ Dupla criada!');await initMemberPage();};
 
 function renderPerfil(){
@@ -1051,7 +1141,7 @@ window.carregarParticipantesDia=async function(){
         const st=conf?.confirmado===true?'confirmado':conf?.confirmado===false?'desistiu':'pendente';
         const label=st==='confirmado'?'✅ Confirmado':st==='desistiu'?'❌ Desistiu':'⏳ Pendente';
         const cls=st==='confirmado'?'part-confirmado':st==='desistiu'?'part-desistiu':'part-pendente';
-        return`<div class="part-item"><span class="part-nome">${i.usuarioNome}</span><span class="part-status ${cls}">${label}</span></div>`;
+        const nomeExib1=allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0];return`<div class="part-item"><span class="part-nome">${nomeExib1}</span><span class="part-status ${cls}">${label}</span></div>`;
       }).join('');
       html+='</div>';
     }
@@ -1060,7 +1150,7 @@ window.carregarParticipantesDia=async function(){
     if(diaristasAprovados.length){
       html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Diaristas aprovados (${diaristasAprovados.length})</div>`;
       html+='<div class="card" style="padding:0;overflow:hidden">';
-      html+=diaristasAprovados.map(d=>`<div class="part-item"><span class="part-nome">${d.usuarioNome}</span><span class="part-status" style="background:#FFF3DC;color:#854F0B">Diarista · R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</span></div>`).join('');
+      html+=diaristasAprovados.map(d=>{const nomeD=allUsers.find(u=>u.uid===d.usuarioId)?.nomeApresentacao||d.usuarioNome.split(' ')[0];return`<div class="part-item"><span class="part-nome">${nomeD}</span><span class="part-status" style="background:#FFF3DC;color:#854F0B">Diarista · R$ ${Number(d.taxa||0).toFixed(2).replace('.',',')}</span></div>`;}).join('');
       html+='</div>';
     }
 
@@ -1420,9 +1510,14 @@ function renderUsuariosGerente(){
   const status=document.getElementById('filtroStatusMembro')?.value||'';
   const el=document.getElementById('usuariosGerenteList');
   let membros=allUsers.filter(u=>u.tipo==='Membro');
-  if(busca)membros=membros.filter(u=>(u.nome||'').toLowerCase().includes(busca)||(u.email||'').toLowerCase().includes(busca)||(u.nomeApresentacao||'').toLowerCase().includes(busca));
-  if(nivel)membros=membros.filter(u=>u.nivel===nivel);
-  if(status)membros=membros.filter(u=>u.status===status);
+  // busca APENAS por nome completo, apelido e email — não CPF nem telefone
+  if(busca) membros=membros.filter(u=>
+    (u.nome||'').toLowerCase().includes(busca)||
+    (u.nomeApresentacao||'').toLowerCase().includes(busca)||
+    (u.email||'').toLowerCase().includes(busca)
+  );
+  if(nivel) membros=membros.filter(u=>u.nivel===nivel);
+  if(status) membros=membros.filter(u=>u.status===status);
   const total=allUsers.filter(u=>u.tipo==='Membro').length;
   const badge=document.getElementById('badgeMembrosCount');
   if(badge)badge.textContent=membros.length===total?`${total}`:`${membros.length} de ${total}`;
@@ -1431,6 +1526,15 @@ function renderUsuariosGerente(){
   el.innerHTML=membros.map(u=>`<div class="card" style="cursor:pointer" onclick="window.verMembro('${u.uid}')"><div class="card-row"><div style="display:flex;align-items:center;gap:11px"><div class="avatar" style="flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div><div><div class="card-title">${u.nome}${u.nomeApresentacao?` <span style="font-size:12px;color:var(--or);font-weight:400">(${u.nomeApresentacao})</span>`:''}</div><div class="card-sub">${u.email}</div></div></div><span class="badge ${u.status==='Ativo'?'bg':'bgy'}">${u.status}</span></div><div class="card-meta"><span class="badge bb">${u.nivel}</span><span class="badge bgy">${u.telefone||'—'}</span></div></div>`).join('');
 }
 window.limparFiltrosMembros=function(){['buscaMembro','filtroNivelMembro','filtroStatusMembro'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});renderUsuariosGerente();};
+
+window.recarregarMembros=async function(){
+  // recarrega usuários do Firestore para garantir dados frescos
+  loading(true);
+  const usSnap=await getDocs(collection(db,'usuarios'));
+  allUsers=usSnap.docs.map(d=>({uid:d.id,...d.data()}));
+  loading(false);
+  renderUsuariosGerente();
+};
 window.verMembro=function(uid){
   const u=allUsers.find(x=>x.uid===uid);if(!u)return;
   document.getElementById('modalMembroContent').innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div class="avatar" style="width:48px;height:48px;font-size:16px;flex-shrink:0">${u.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div><div><div style="font-size:16px;font-weight:700">${u.nome}</div><div style="font-size:12px;color:var(--or);font-weight:500">${u.nomeApresentacao||''}</div><div style="font-size:13px;color:var(--tx2)">${u.email}</div></div></div><hr>
@@ -1541,7 +1645,7 @@ window.carregarDiaristas=async function(){
           const badge=st==='confirmado'?'<span class="badge bg">✅ Confirmado</span>':st==='desistiu'?'<span class="badge br">❌ Desistiu</span>':'<span class="badge ba">⏳ Pendente</span>';
           return`<div class="part-item" style="flex-direction:column;align-items:flex-start;gap:6px">
             <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
-              <span class="part-nome">${i.usuarioNome}</span>${badge}
+              <span class="part-nome">${allUsers.find(u=>u.uid===i.usuarioId)?.nomeApresentacao||i.usuarioNome.split(' ')[0]}</span>${badge}
             </div>
             <div style="display:flex;gap:6px">
               <button class="btn-sm ok" style="font-size:10px;padding:4px 8px" onclick="window.marcarPresencaData('${i.usuarioId}','${i.usuarioNome}','${jogoId}','${dataKey}',true)"><i class="ti ti-check"></i> Confirmar</button>
