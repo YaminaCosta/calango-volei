@@ -1079,7 +1079,14 @@ async function gerarQRCodeMP(usuarioId, usuarioNome, periodo, valor, tipo){
   const resp = await fetch('https://gerarpixmp-sfdsj2yxhq-rj.a.run.app', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({usuarioId, usuarioNome, periodo, valor, tipo})
+    body: JSON.stringify({
+      usuarioId,
+      usuarioNome,
+      usuarioEmail: currentUser?.email || 'calango.volei@outlook.com',
+      periodo,
+      valor,
+      tipo
+    })
   });
   if(!resp.ok) throw new Error('Erro ao gerar PIX: ' + resp.status);
   return resp.json();
