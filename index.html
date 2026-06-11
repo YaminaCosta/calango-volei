@@ -1076,7 +1076,7 @@ window.filtrarInscricoesMembro=async function(){
 // PIX para o total do período — Fix 3: garante que o total é do período selecionado
 // ══ MERCADO PAGO — gera QR Code dinâmico ══
 async function gerarQRCodeMP(usuarioId, usuarioNome, periodo, valor, tipo){
-  const resp = await fetch('https://southamerica-east1-calango-volei-clube.cloudfunctions.net/gerarPixMP', {
+  const resp = await fetch('https://gerarpixmp-sfdsj2yxhq-rj.a.run.app', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({usuarioId, usuarioNome, periodo, valor, tipo})
