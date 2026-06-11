@@ -891,7 +891,7 @@ window.abrirInscricao=async function(jogoId){
   const jogo=allJogos.find(j=>j.id===jogoId);modalJogoAtual=jogo;
   let extraHtml='';
   if(jogo.tipo==='Dupla'){
-    const dupSnap=await getDocs(query(collection(db,'duplas'),where('membros','array-contains',currentUID),where('status','==','Ativa')));
+    const dupSnap=await getDocs(query(collection(db,'duplas'),where('membros','array-contains',currentUID)));
     const duplas=dupSnap.docs.map(d=>({id:d.id,...d.data()}));
     if(!duplas.length){extraHtml=`<div style="background:#FEEEEE;color:#A32D2D;border-radius:8px;padding:10px 12px;font-size:12px">⚠️ Você não tem duplas ativas. Vá em <strong>Duplas</strong> e crie uma primeiro.</div>`;}
     else{const opts=duplas.map(d=>{const p=d.membros.find(u=>u!==currentUID);const uP=allUsers.find(u=>u.uid===p);return`<option value="${d.id}" data-parceiro="${p}">${d.nome} (com ${uP?(uP.nomeApresentacao||uP.nome.split(' ')[0]):'?'})</option>`;}).join('');extraHtml=`<div class="form-group"><label class="form-label" style="font-size:12px">Selecionar dupla</label><select class="form-control" id="modalDuplaSelect">${opts}</select></div><div style="background:#E6F7EF;color:#0F6E56;border-radius:8px;padding:8px 12px;font-size:12px">✅ Inscrição registrada para <strong>ambos</strong> da dupla.</div>`;}
@@ -1274,7 +1274,23 @@ function atualizarPrevPix(cfg){
 async function renderMinhasDuplas(duplas){
   const el=document.getElementById('minhasDuplasList');
   if(!duplas.length){el.innerHTML='<div class="empty"><i class="ti ti-users-group"></i><p>Nenhuma dupla. Clique em "Nova"!</p></div>';return;}
-  el.innerHTML=duplas.map(d=>{const nomes=d.membros.map(uid=>{const u=allUsers.find(x=>x.uid===uid);return u?u.nome.split(' ')[0]:'?';}).join(' + ');return`<div class="card"><div class="card-row"><div><div class="card-title">${d.nome}</div><div class="card-sub">${nomes}</div></div><span class="badge ${d.status==='Ativa'?'bg':'bgy'}">${d.status}</span></div></div>`;}).join('');
+  el.innerHTML=duplas.map(d=>{const nomes=d.membros.map(uid=>{const u=allUsers.find(x=>x.uid===uid);return u?u.nome.split(' ')[0]:'?';}).join(' + ');return`<div class="card"><div class="card-row"><div><div class="card-title">${d.nome}</div><div class="card-sub">${nomes}</div></div><span class="badge ${d.status==='Ativa'||d.status==='Ativo'?'bg':'bgy'}">${d.status||'Ativa'}</span></div></div>`;}).join('');
+}
+
+// ── Carrega configuração PIX do Firebase ──
+async function carregarConfigPix(){
+  try{
+    const snap=await getDocs(collection(db,'config'));
+    const pixDoc=snap.docs.find(d=>d.id==='pix');
+    if(pixDoc) return pixDoc.data();
+    // fallback: tenta doc direto
+    const{getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const d=await getDoc(doc(db,'config','pix'));
+    return d.exists()?d.data():null;
+  }catch(e){
+    console.warn('carregarConfigPix error:',e);
+    return null;
+  }
 }
 
 window.openModalDupla=function(){
