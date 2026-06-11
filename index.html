@@ -1074,8 +1074,69 @@ window.filtrarInscricoesMembro=async function(){
 };
 
 // PIX para o total do período — Fix 3: garante que o total é do período selecionado
+// ══ MERCADO PAGO — gera QR Code dinâmico ══
+async function gerarQRCodeMP(usuarioId, usuarioNome, periodo, valor, tipo){
+  const resp = await fetch('https://southamerica-east1-calango-volei-clube.cloudfunctions.net/gerarPixMP', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({usuarioId, usuarioNome, periodo, valor, tipo})
+  });
+  if(!resp.ok) throw new Error('Erro ao gerar PIX: ' + resp.status);
+  return resp.json();
+}
+
+function mostrarModalQR(qrCode, qrBase64, valor, titulo, subtitulo, orderId){
+  const img = qrBase64
+    ? `<img src="data:image/png;base64,${qrBase64}" style="width:200px;height:200px;display:block;margin:0 auto 12px" alt="QR Code PIX">`
+    : '';
+  document.getElementById('modalPixContent').innerHTML=`
+    <div class="card" style="background:#E6F7EF;text-align:center;margin-bottom:14px">
+      <div style="font-size:12px;color:#0F6E56;margin-bottom:4px">${titulo}</div>
+      <div style="font-size:28px;font-weight:700;color:#0F6E56">R$ ${Number(valor).toFixed(2).replace('.',',')}</div>
+      <div style="font-size:12px;color:#0F6E56;margin-top:4px">${subtitulo}</div>
+    </div>
+    ${img}
+    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">PIX Copia e Cola</div>
+    <div style="background:var(--sur2);border-radius:10px;padding:12px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--tx2);margin-bottom:10px;line-height:1.5">${qrCode}</div>
+    <button onclick="window.copiarPix('${qrCode}')" style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px">
+      <i class="ti ti-copy"></i> Copiar código PIX
+    </button>
+    <div style="background:#E8F3FE;border-radius:9px;padding:10px 12px;font-size:12px;color:#185FA5;line-height:1.5">
+      ✅ Após o pagamento, a confirmação é <strong>automática</strong> — seu status atualiza em segundos.
+    </div>`;
+  document.getElementById('modalPix').classList.add('open');
+  // polling para verificar confirmação
+  window._pixPollInterval = setInterval(async ()=>{
+    try{
+      const snap = await getDocs(query(collection(db,'pagamentos'),
+        where('usuarioId','==',currentUID),where('mpId','==',String(orderId))));
+      if(!snap.empty){
+        clearInterval(window._pixPollInterval);
+        closeModal('modalPix');
+        showToast('✅ Pagamento confirmado automaticamente!');
+        await initMemberPage();
+      }
+    }catch(e){}
+  }, 3000); // verifica a cada 3 segundos
+  // para o polling após 15 minutos
+  setTimeout(()=>clearInterval(window._pixPollInterval), 15*60*1000);
+}
+
 // PIX total diárias do período
 window.abrirPixDiariaTotal=async function(total,periodo){
+  loading(true);
+  try{
+    const result=await gerarQRCodeMP(currentUID,currentUser.nome,periodo,total,'diaria');
+    loading(false);
+    if(result.qrCode){
+      mostrarModalQR(result.qrCode,result.qrCodeBase64,total,
+        `Diárias · ${periodo}`,'Confirmação automática após pagamento',result.orderId);
+      return;
+    }
+  }catch(e){
+    console.warn('MP falhou, usando PIX estático:',e.message);
+  }
+  loading(false);
   const cfg=await carregarConfigPix();
   if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
   const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
@@ -1103,14 +1164,26 @@ window.abrirPixDiariaTotal=async function(total,periodo){
 };
 
 window.abrirPixTotal=async function(total,label){
+  // Tenta Mercado Pago primeiro (confirmação automática)
+  loading(true);
+  try{
+    const periodo=typeof label==='string'?(label.match(/(\d{2}\/(\d{4}))/)?.[1]||label):label;
+    const result=await gerarQRCodeMP(currentUID,currentUser.nome,periodo,total,'mensalidade');
+    loading(false);
+    if(result.qrCode){
+      mostrarModalQR(result.qrCode,result.qrCodeBase64,total,
+        `Mensalidade · ${periodo}`,'Confirmação automática após pagamento',result.orderId);
+      return;
+    }
+  }catch(e){console.warn('MP indisponível, usando PIX estático:',e.message);}
+  loading(false);
+  // fallback PIX estático
   const cfg=await carregarConfigPix();
   if(!cfg?.chave){showToast('⚠️ Chave PIX não configurada.');return;}
-  // Fix 4: txid inclui apelido do membro para identificação no extrato
   const apelido=(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase();
-  // extrai MM e AAAA do label (ex: "Período 06/2026" → "062026")
-  const periodoCode=(label.match(/(\d{2})\/(\d{4})/)||['','',''])[0].replace('/','');
+  const periodoCode=(typeof label==='string'?(label.match(/(\d{2})\/(\d{4})/)||['','',''])[0].replace('/',''):'');
   const txid=('CAL'+apelido+(periodoCode||Date.now().toString(36).slice(-4))).toUpperCase().slice(0,25);
   const codigo=gerarPixCopiaCola(cfg.chave,cfg.tipo,cfg.nome||'Calango Volei',cfg.cidade||'Salvador',total,txid);
   document.getElementById('modalPixContent').innerHTML=`
@@ -1125,84 +1198,12 @@ window.abrirPixTotal=async function(total,label){
       <i class="ti ti-copy"></i> Copiar código PIX
     </button>
     <div style="background:#FFF3DC;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:12px;color:#854F0B;line-height:1.5">
-      <strong>💡 Para o gerente identificar seu pagamento:</strong><br>
-      Ao pagar, o extrato do clube mostrará <strong>${txid}</strong> como referência. Guarde esse código.
-    </div>
-    <div style="font-size:12px;color:var(--tx2);margin-top:10px;text-align:center">
-      Abra o app do banco → PIX → Pagar → Copia e Cola<br>
-      Favorecido: <strong>${cfg.nome||'Calango Vôlei'}</strong>
+      <strong>💡 Identificação no extrato:</strong> ${txid}<br>
+      Abra o banco → PIX → Pagar → Copia e Cola<br>Favorecido: ${cfg.nome||'Calango Vôlei'}
     </div>`;
-  document.getElementById('modalPix').classList.add('open');
+  document.getElementById('modalPix').classList.add('open')
 };
 
-window.cancelarInscricao=async function(inscId,jogoNome){
-  if(!confirm(`Cancelar inscrição em "${jogoNome}"?\n\nSó inscrições Pendentes podem ser canceladas pelo membro.`))return;
-  loading(true);
-  await deleteDoc(doc(db,'inscricoes',inscId));
-  showToast('✅ Inscrição cancelada.');
-  await initMemberPage();
-  loading(false);
-};
-
-// ══ PIX COPIA E COLA ══
-
-// Gera o payload padrão EMV PIX (BR Code)
-function gerarPixCopiaCola(chave, tipochave, nome, cidade, valor, txid){
-  const fmt=(id,val)=>{
-    const len=String(val.length).padStart(2,'0');
-    return `${id}${len}${val}`;
-  };
-  // limpa nome e cidade
-  nome=nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,25).trim();
-  cidade=cidade.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,15).trim();
-  txid=(txid||'CALANGO').replace(/[^a-zA-Z0-9]/g,'').slice(0,25)||'CALANGO';
-
-  // normaliza chave por tipo
-  let chaveNorm=chave.trim();
-  if(tipochave==='cpf') chaveNorm=chave.replace(/\D/g,'');
-  if(tipochave==='telefone') chaveNorm='+55'+chave.replace(/\D/g,'').replace(/^55/,'');
-
-  const merchantAccountInfo=fmt('00','BR.GOV.BCB.PIX')+fmt('01',chaveNorm);
-  const valorStr=valor>0?valor.toFixed(2):'';
-
-  let payload='';
-  payload+=fmt('00','01');                              // Payload Format Indicator
-  payload+=fmt('26',merchantAccountInfo);               // Merchant Account Info
-  payload+=fmt('52','0000');                            // Merchant Category Code
-  payload+=fmt('53','986');                             // Transaction Currency (BRL)
-  if(valorStr) payload+=fmt('54',valorStr);             // Transaction Amount
-  payload+=fmt('58','BR');                              // Country Code
-  payload+=fmt('59',nome);                              // Merchant Name
-  payload+=fmt('60',cidade);                            // Merchant City
-  payload+=fmt('62',fmt('05',txid));                    // Additional Data (txid)
-  payload+='6304';                                      // CRC placeholder
-
-  // CRC16-CCITT
-  const crc=crc16(payload);
-  return payload+crc;
-}
-
-function crc16(str){
-  let crc=0xFFFF;
-  for(let i=0;i<str.length;i++){
-    crc^=str.charCodeAt(i)<<8;
-    for(let j=0;j<8;j++){
-      crc=(crc&0x8000)?((crc<<1)^0x1021):crc<<1;
-    }
-  }
-  return (crc&0xFFFF).toString(16).toUpperCase().padStart(4,'0');
-}
-
-// Carrega config PIX do Firestore (coleção 'config', doc 'pix')
-async function carregarConfigPix(){
-  try{
-    const{getDoc:gd,doc:dc}=window._fb||{getDoc,doc};
-    const snap=await getDoc(doc(db,'config','pix'));
-    return snap.exists()?snap.data():null;
-  }catch(e){return null;}
-}
-
-// Abre modal PIX para o membro
 window.copiarPix=function(codigo){
   navigator.clipboard.writeText(codigo).then(()=>{
     showToast('✅ Código PIX copiado! Cole no app do seu banco.');
