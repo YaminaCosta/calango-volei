@@ -1163,6 +1163,45 @@ window.abrirPixDiariaTotal=async function(total,periodo){
   document.getElementById('modalPix').classList.add('open');
 };
 
+// ── PIX Copia e Cola (EMV BR Code) ──
+function crc16(str){
+  let crc=0xFFFF;
+  for(let i=0;i<str.length;i++){
+    crc^=str.charCodeAt(i)<<8;
+    for(let j=0;j<8;j++) crc=(crc&0x8000)?(crc<<1)^0x1021:(crc<<1);
+  }
+  return((crc&0xFFFF).toString(16).toUpperCase().padStart(4,'0'));
+}
+
+function gerarPixCopiaCola(chave,tipo,nome,cidade,valor,txid){
+  function f(id,val){return id+String(val.length).padStart(2,'0')+val;}
+  // merchant account info
+  let mai=f('00','BR.GOV.BCB.PIX');
+  if(tipo==='telefone') mai+=f('01',chave.replace(/\D/g,'').replace(/^(\d{2})(\d+)/,'+$1$2'));
+  else if(tipo==='cpf'||tipo==='cnpj') mai+=f('01',chave.replace(/\D/g,''));
+  else mai+=f('01',chave);
+  const merchantAccount=f('26',mai);
+  // txid
+  const txidField=f('05',txid.replace(/[^a-zA-Z0-9]/g,'').slice(0,25)||'***');
+  const addData=f('62',txidField);
+  // valor
+  const valorStr=valor.toFixed(2);
+  // monta payload sem CRC
+  const payload=[
+    f('00','01'),           // payload format
+    merchantAccount,        // merchant account info
+    f('52','0000'),         // merchant category code
+    f('53','986'),          // transaction currency (BRL)
+    f('54',valorStr),       // transaction amount
+    f('58','BR'),           // country code
+    f('59',nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,25)),
+    f('60',cidade.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,15)),
+    addData,
+    '6304'                  // CRC placeholder
+  ].join('');
+  return payload+crc16(payload);
+}
+
 window.abrirPixTotal=async function(total,label){
   // Tenta Mercado Pago primeiro (confirmação automática)
   loading(true);
