@@ -1092,7 +1092,7 @@ async function gerarQRCodeMP(usuarioId, usuarioNome, periodo, valor, tipo){
   return resp.json();
 }
 
-function mostrarModalQR(qrCode, qrBase64, valor, titulo, subtitulo, orderId){
+function mostrarModalQR(qrCode, qrBase64, valor, titulo, subtitulo, orderId, periodoModal){
   const img = qrBase64
     ? `<img src="data:image/png;base64,${qrBase64}" style="width:200px;height:200px;display:block;margin:0 auto 12px" alt="QR Code PIX">`
     : '';
@@ -1112,11 +1112,13 @@ function mostrarModalQR(qrCode, qrBase64, valor, titulo, subtitulo, orderId){
       ✅ Após o pagamento, a confirmação é <strong>automática</strong> — seu status atualiza em segundos.
     </div>`;
   document.getElementById('modalPix').classList.add('open');
-  // polling para verificar confirmação
+  // polling para verificar confirmação a cada 3s por 15min
   window._pixPollInterval = setInterval(async ()=>{
     try{
       const snap = await getDocs(query(collection(db,'pagamentos'),
-        where('usuarioId','==',currentUID),where('mpId','==',String(orderId))));
+        where('usuarioId','==',currentUID),
+        where('periodo','==',periodoModal),
+        where('origem','==','mercadopago')));
       if(!snap.empty){
         clearInterval(window._pixPollInterval);
         closeModal('modalPix');
@@ -1124,8 +1126,7 @@ function mostrarModalQR(qrCode, qrBase64, valor, titulo, subtitulo, orderId){
         await initMemberPage();
       }
     }catch(e){}
-  }, 3000); // verifica a cada 3 segundos
-  // para o polling após 15 minutos
+  }, 3000);
   setTimeout(()=>clearInterval(window._pixPollInterval), 15*60*1000);
 }
 
@@ -1142,7 +1143,7 @@ window.abrirPixDiariaTotal=async function(total,periodo){
     loading(false);
     if(result.qrCode){
       mostrarModalQR(result.qrCode,result.qrCodeBase64,total,
-        `Diárias · ${periodo}`,'Confirmação automática após pagamento',result.orderId);
+        `Diárias · ${periodo}`,'Confirmação automática após pagamento',result.orderId,periodo);
       return;
     }
   }catch(e){
@@ -1238,7 +1239,7 @@ window.abrirPixTotal=async function(total,label){
     loading(false);
     if(result.qrCode){
       mostrarModalQR(result.qrCode,result.qrCodeBase64,total,
-        `Mensalidade · ${periodo}`,'Confirmação automática após pagamento',result.orderId);
+        `Mensalidade · ${periodo}`,'Confirmação automática após pagamento',result.orderId,periodo);
       return;
     }
   }catch(e){console.warn('MP indisponível, usando PIX estático:',e.message);}
@@ -2487,7 +2488,7 @@ window.renderPagamentosRegistrados=async function(){
   el.innerHTML=pags.map(p=>{
     const u=allUsers.find(x=>x.uid===p.usuarioId);
     const nome=u?.nomeApresentacao||p.usuarioNome?.split(' ')[0]||p.usuarioNome;
-    const origemLabel=p.origem==='ofx'?'📄 OFX':'✏️ Manual';
+    const origemLabel=p.origem==='ofx'?'📄 OFX':p.origem==='mercadopago'?'💳 Mercado Pago':'✏️ Manual';
     const tipoAtual=p.tipo||'mensalidade';
     return`<div class="card">
       <div class="card-row">
