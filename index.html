@@ -965,7 +965,8 @@ async function renderMinhasInscricoes(inscricoes, periodoAtual){
   // pagamentos já realizados
   const pixCfg=await carregarConfigPix();
   let jaPageiMens=0, jaPageiDiaria=0;
-  const periodoParaPagamento=filtroMes||(mesesDisp.length===1?mesesDisp[0]:'');
+  // periodoParaPagamento: usa filtro selecionado, ou período mais recente das inscrições
+  const periodoParaPagamento=filtroMes||mesesDisp[0]||periodoAtual?.nome||'';
   if(periodoParaPagamento){
     const pagSnap=await getDocs(query(collection(db,'pagamentos'),
       where('usuarioId','==',currentUID),where('periodo','==',periodoParaPagamento)));
