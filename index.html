@@ -1133,6 +1133,11 @@ function mostrarModalQR(qrCode, qrBase64, valor, titulo, subtitulo, orderId){
 window.abrirPixDiariaTotal=async function(total,periodo){
   loading(true);
   try{
+    // garante período válido
+    if(!periodo||periodo.length<7){
+      const pv=periodoVigente();
+      periodo=pv?.nome||document.getElementById('inscricoesPeriodoFiltro')?.value||'';
+    }
     const result=await gerarQRCodeMP(currentUID,currentUser.nome,periodo,total,'diaria');
     loading(false);
     if(result.qrCode){
@@ -1213,7 +1218,22 @@ window.abrirPixTotal=async function(total,label){
   // Tenta Mercado Pago primeiro (confirmação automática)
   loading(true);
   try{
-    const periodo=typeof label==='string'?(label.match(/(\d{2}\/(\d{4}))/)?.[1]||label):label;
+    // Extrai período no formato MM/AAAA do label
+    // label pode ser "06/2026", "Período 06/2026", ou direto o período
+    let periodo='';
+    if(typeof label==='string'){
+      // tenta extrair MM/AAAA
+      const match=label.match(/(\d{2}\/\d{4})/);
+      if(match) periodo=match[1];
+      else periodo=label;
+    }else{
+      periodo=String(label);
+    }
+    // fallback: usa período vigente
+    if(!periodo||periodo.length<7){
+      const pv=periodoVigente();
+      periodo=pv?.nome||document.getElementById('inscricoesPeriodoFiltro')?.value||'';
+    }
     const result=await gerarQRCodeMP(currentUID,currentUser.nome,periodo,total,'mensalidade');
     loading(false);
     if(result.qrCode){
