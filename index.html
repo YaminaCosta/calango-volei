@@ -291,6 +291,25 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
         </div>
       </div>
     </div>
+
+      <div class="page" id="pageMemberPartidas">
+        <div class="sec-header"><div class="sec-title">Partidas do dia</div></div>
+        <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label">Período</label>
+          <select class="form-control" id="partidasPeriodoSel" onchange="window.filtrarJogosPartidas()" style="font-size:13px">
+            <option value="">Selecione o período...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Jogo</label>
+          <select class="form-control" id="partidasJogoSel" onchange="window.carregarPartidasDia()" style="font-size:13px" disabled>
+            <option value="">Selecione um jogo...</option>
+          </select>
+        </div>
+        <div id="partidasDiaPanel">
+          <div class="empty"><i class="ti ti-tournament"></i><p>Selecione o período e o jogo para ver as partidas</p></div>
+        </div>
+      </div>
     <div class="bottomnav" id="memberNav">
       <button class="bnav-btn active" onclick="memberPage('pageMemberHome',this)"><i class="ti ti-home"></i>Início</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberInscricoes',this)"><i class="ti ti-calendar-check"></i>Inscrições</button>
@@ -298,6 +317,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
       <button class="bnav-btn" onclick="memberPage('pageMemberDiaristas',this);initDiaristasMembro()"><i class="ti ti-run"></i>Diaristas</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberDuplas',this)"><i class="ti ti-users"></i>Duplas</button>
       <button class="bnav-btn" onclick="memberPage('pageMemberPerfil',this)"><i class="ti ti-user"></i>Perfil</button>
+      <button class="bnav-btn" onclick="memberPage('pageMemberPartidas',this);window.initPartidas()"><i class="ti ti-tournament"></i>Partidas</button>
     </div>
   </div>
 
@@ -599,6 +619,33 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
 </div><!-- screenMain -->
 
 <!-- MODAIS -->
+<!-- MODAL NOVA PARTIDA -->
+<div class="modal-overlay" id="modalNovaPartida">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nova Partida</span><button class="modal-close" onclick="closeModal('modalNovaPartida')">✕</button></div>
+    <div class="form-group">
+      <label class="form-label" id="labelTime1">Time 1</label>
+      <div id="seletorTime1"></div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label" id="labelTime2">Time 2</label>
+      <div id="seletorTime2"></div>
+    </div>
+    <button class="btn-sm pr" style="width:100%;justify-content:center;margin-top:14px" onclick="window.criarPartida()">
+      <i class="ti ti-plus"></i> Criar partida
+    </button>
+  </div>
+</div>
+
+<!-- MODAL REGISTRAR PLACAR -->
+<div class="modal-overlay" id="modalPlacar">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Registrar Placar</span><button class="modal-close" onclick="closeModal('modalPlacar')">✕</button></div>
+    <div id="placarConteudo"></div>
+  </div>
+</div>
+
+<!-- MODAIS existentes -->
 <div class="modal-overlay" id="modalInscricao"><div class="modal"><div class="modal-title">🏐 Inscrição no jogo</div><div id="modalInscricaoContent"></div><div class="modal-actions"><button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalInscricao')">Cancelar</button><button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarInscricao()">Confirmar</button></div></div></div>
 <div class="modal-overlay" id="modalDupla"><div class="modal"><div class="modal-title">👥 Nova dupla</div><div class="form-group"><label class="form-label">Nome da dupla</label><input class="form-control" id="duplaNome" placeholder="Ex: Dupla Campeã"></div><div class="form-group"><label class="form-label">Parceiro(a)</label><select class="form-control" id="duplaJogador2"><option value="">Selecione...</option></select></div><div class="modal-actions"><button class="btn-sm" style="flex:1;justify-content:center" onclick="closeModal('modalDupla')">Cancelar</button><button class="btn-sm pr" style="flex:1;justify-content:center" onclick="confirmarDupla()">Criar dupla</button></div></div></div>
 <div class="modal-overlay" id="modalNovoJogo">
@@ -612,7 +659,14 @@ hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="jogoTipo"><option>Quarteto</option><option>Dupla</option></select></div>
-      <div class="form-group"><label class="form-label">Nível</label><select class="form-control" id="jogoNivel"><option>Iniciante</option><option>Intermediário</option><option>Avançado</option></select></div>
+      <div class="form-group">
+        <label class="form-label">Nível(is)</label>
+        <div style="background:var(--sur2);border-radius:9px;padding:10px 12px;display:flex;gap:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="jogoNivelIni" value="Iniciante"> Iniciante</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="jogoNivelInt" value="Intermediário"> Intermediário</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="jogoNivelAva" value="Avançado"> Avançado</label>
+        </div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Vagas</label><input class="form-control" id="jogoVagas" type="number" value="12" min="1"></div>
@@ -816,12 +870,12 @@ async function initMemberPage(){
   const mesesDisp=[...new Set(inscricoes.map(i=>i.jogoMesAno).filter(Boolean))].sort().reverse();
   const periodoNome=periodo?.nome||'';
 
-  // HOME period filter
+  // HOME period filter — só períodos Abertos
   const selHome=document.getElementById('homePeriodoFiltro');
   if(selHome){
-    // todos os períodos de jogos disponíveis para o nível do membro
-    const mesesJogos=[...new Set(allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto').map(j=>j.mesAno).filter(Boolean))].sort().reverse();
-    const todosMeses=[...new Set([...mesesJogos,...mesesDisp])].sort().reverse();
+    const periodosAbertos=new Set(allPeriodos.filter(p=>p.status==='Aberto').map(p=>p.nome));
+    const mesesJogos=[...new Set(allJogos.filter(j=>jogoParaMembro(j,currentUser.nivel)&&j.status==='Aberto'&&(allPeriodos.length===0||periodosAbertos.has(j.mesAno))).map(j=>j.mesAno).filter(Boolean))].sort().reverse();
+    const todosMeses=allPeriodos.length>0?[...mesesJogos]:[...new Set([...mesesJogos,...mesesDisp])].sort().reverse();
     selHome.innerHTML='<option value="">Todos os períodos</option>'+
       todosMeses.map(m=>`<option value="${m}" ${m===periodoNome?'selected':''}>${m}</option>`).join('');
   }
@@ -836,7 +890,7 @@ async function initMemberPage(){
     }
   });
 
-  const jogosNivel=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!homePeriodoSel||j.mesAno===homePeriodoSel));
+  const jogosNivel=allJogos.filter(j=>jogoParaMembro(j,currentUser.nivel)&&j.status==='Aberto'&&(!homePeriodoSel||j.mesAno===homePeriodoSel));
 
   document.getElementById('welcomeName').textContent='Olá, '+(currentUser.nomeApresentacao||currentUser.nome.split(' ')[0])+'! 👋';
   document.getElementById('welcomeLevel').textContent='Nível: '+currentUser.nivel+(periodo?' · Período '+periodo.nome+' · '+formatDate(periodo.dataInicio)+' a '+formatDate(periodo.dataFim):' · Nenhum período vigente');
@@ -864,7 +918,7 @@ window.filtrarHomeMembro=async function(){
       else if(!periodoSel) totalMes+=Number(i.jogoValor||0);
     }
   });
-  const jogosNivel=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!periodoSel||j.mesAno===periodoSel));
+  const jogosNivel=allJogos.filter(j=>jogoParaMembro(j,currentUser.nivel)&&j.status==='Aberto'&&(!periodoSel||j.mesAno===periodoSel));
   document.getElementById('wbJogos').textContent=jogosNivel.length;
   document.getElementById('wbTotal').textContent=totalMes.toFixed(2).replace('.',',');
   document.getElementById('badgeJogosCount').textContent=jogosNivel.length+' disponíveis';
@@ -872,7 +926,15 @@ window.filtrarHomeMembro=async function(){
 };
 
 function renderJogosMember(inscricoes,periodo){
-  const jogos=allJogos.filter(j=>j.nivel===currentUser.nivel&&j.status==='Aberto'&&(!periodo||j.mesAno===periodo.nome));
+  // só mostra jogos de períodos Abertos (não apenas o jogo com status Aberto)
+  const periodosAbertos=new Set(allPeriodos.filter(p=>p.status==='Aberto').map(p=>p.nome));
+  const jogos=allJogos.filter(j=>
+    jogoParaMembro(j,currentUser.nivel) &&
+    j.status==='Aberto' &&
+    (!periodo||j.mesAno===periodo.nome) &&
+    // se há períodos cadastrados, só mostra jogos de períodos abertos
+    (allPeriodos.length===0 || periodosAbertos.has(j.mesAno))
+  );
   const el=document.getElementById('jogosListMember');
   if(!jogos.length){el.innerHTML=`<div class="empty"><i class="ti ti-calendar-off"></i><p>${periodo?'Nenhum jogo disponível no período '+periodo.nome+'.':'Nenhum período vigente no momento.'}</p></div>`;return;}
   el.innerHTML=jogos.map(j=>{
@@ -1749,7 +1811,7 @@ window.filtrarJogosDiaristasMembro=function(){
 
   // diaristas vê todos os jogos do período (não filtra por nível — pode solicitar diária em qualquer nível)
   // confirmações de presença só no seu nível
-  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno===periodo&&j.nivel===currentUser.nivel));
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno===periodo&&jogoParaMembro(j,currentUser.nivel)));
   selJogo.innerHTML='<option value="">Selecione um jogo...</option>'+
     jogos.map(j=>`<option value="${j.id}">${j.dia} · ${j.nivel} · ${j.nome}</option>`).join('');
   selJogo.disabled=false;
@@ -2018,6 +2080,11 @@ window.rejeitarNivel=async function(id){loading(true);await updateDoc(doc(db,'so
 window.aprovarNivelNovo=async function(uid){loading(true);await updateDoc(doc(db,'usuarios',uid),{nivelAprovado:true});const u=allUsers.find(x=>x.uid===uid);if(u)u.nivelAprovado=true;showToast('✅ Nível confirmado!');await renderNivelSolic();await renderGerenteHome();loading(false);};
 window.rejeitarNivelNovo=async function(uid){const novo=prompt('Nível correto (Iniciante / Intermediário / Avançado):');if(!novo)return;loading(true);await updateDoc(doc(db,'usuarios',uid),{nivel:novo,nivelAprovado:true});const u=allUsers.find(x=>x.uid===uid);if(u){u.nivel=novo;u.nivelAprovado=true;}showToast('✅ Reclassificado: '+novo);await renderNivelSolic();await renderGerenteHome();loading(false);};
 
+function nivelDisplay(jogo){
+  if(Array.isArray(jogo.niveis)&&jogo.niveis.length>1) return jogo.niveis.join(' + ');
+  return jogo.nivel||'';
+}
+
 function renderJogosGerente(){
   const el=document.getElementById('jogosGerenteList');
   const filtro=document.getElementById('filtroMesJogos');
@@ -2043,8 +2110,36 @@ function renderJogosGerente(){
 }
 
 window.openModalNovoJogo=function(){['jogoEditId','jogoNome','jogoMesAno'].forEach(id=>document.getElementById(id).value='');document.getElementById('jogoValor').value='0';document.getElementById('jogoVagas').value='12';document.getElementById('jogoProfessor').value='nao';document.getElementById('jogoTaxaDiaria').value='0';document.getElementById('jogoVagasDiaristas').value='nao';document.getElementById('modalNovoJogo').classList.add('open');};
-window.editarJogo=function(id){const j=allJogos.find(x=>x.id===id);document.getElementById('jogoEditId').value=id;document.getElementById('jogoNome').value=j.nome;document.getElementById('jogoDia').value=j.dia;document.getElementById('jogoMesAno').value=j.mesAno||'';document.getElementById('jogoTipo').value=j.tipo;document.getElementById('jogoNivel').value=j.nivel;document.getElementById('jogoVagas').value=j.vagas||12;document.getElementById('jogoValor').value=j.valor||0;document.getElementById('jogoProfessor').value=j.professor||'nao';document.getElementById('jogoTaxaDiaria').value=j.taxaDiaria||0;document.getElementById('jogoVagasDiaristas').value=j.vagasDiaristas||'nao';document.getElementById('modalNovoJogo').classList.add('open');};
-window.confirmarNovoJogo=async function(){const nome=document.getElementById('jogoNome').value.trim();if(!nome){showToast('⚠️ Digite o nome');return;}const dados={nome,dia:document.getElementById('jogoDia').value,mesAno:document.getElementById('jogoMesAno').value.trim(),tipo:document.getElementById('jogoTipo').value,nivel:document.getElementById('jogoNivel').value,vagas:parseInt(document.getElementById('jogoVagas').value)||12,valor:parseFloat(document.getElementById('jogoValor').value)||0,professor:document.getElementById('jogoProfessor').value,taxaDiaria:parseFloat(document.getElementById('jogoTaxaDiaria').value)||0,vagasDiaristas:document.getElementById('jogoVagasDiaristas').value,status:'Aberto'};loading(true);const editId=document.getElementById('jogoEditId').value;if(editId){await updateDoc(doc(db,'jogos',editId),dados);const idx=allJogos.findIndex(j=>j.id===editId);if(idx>=0)allJogos[idx]={id:editId,...dados};showToast('✅ Jogo atualizado!');}else{const ref=await addDoc(collection(db,'jogos'),{...dados,criadoEm:serverTimestamp()});allJogos.push({id:ref.id,...dados});showToast('✅ Jogo criado!');}closeModal('modalNovoJogo');renderJogosGerente();await renderGerenteHome();loading(false);};
+window.editarJogo=function(id){
+  const j=allJogos.find(x=>x.id===id);
+  document.getElementById('jogoEditId').value=id;
+  document.getElementById('jogoNome').value=j.nome;
+  document.getElementById('jogoDia').value=j.dia;
+  document.getElementById('jogoMesAno').value=j.mesAno||'';
+  document.getElementById('jogoTipo').value=j.tipo;
+  // restaura checkboxes de nível
+  const niveisJogo=Array.isArray(j.niveis)?j.niveis:(j.nivel?[j.nivel]:[]);
+  ['Ini','Int','Ava'].forEach(k=>{
+    const el=document.getElementById('jogoNivel'+k);
+    if(el) el.checked=niveisJogo.some(n=>n.startsWith(k==='Ini'?'Ini':k==='Int'?'Int':'Av'));
+  });
+  document.getElementById('jogoVagas').value=j.vagas||12;
+  document.getElementById('jogoValor').value=j.valor||0;
+  document.getElementById('jogoProfessor').value=j.professor||'nao';
+  document.getElementById('jogoTaxaDiaria').value=j.taxaDiaria||0;
+  document.getElementById('jogoVagasDiaristas').value=j.vagasDiaristas||'nao';
+  document.getElementById('modalNovoJogo').classList.add('open');
+};
+window.confirmarNovoJogo=async function(){
+  const nome=document.getElementById('jogoNome').value.trim();
+  if(!nome){showToast('⚠️ Digite o nome');return;}
+  // lê checkboxes de nível — suporta múltiplos
+  const niveis=['Iniciante','Intermediário','Avançado']
+    .filter(n=>document.getElementById('jogoNivel'+n.slice(0,3)).checked);
+  if(!niveis.length){showToast('⚠️ Selecione pelo menos um nível');return;}
+  // nivel = string se único, array se múltiplos
+  const nivelVal=niveis.length===1?niveis[0]:niveis;
+  const dados={nome,dia:document.getElementById('jogoDia').value,mesAno:document.getElementById('jogoMesAno').value.trim(),tipo:document.getElementById('jogoTipo').value,nivel:nivelVal,niveis:niveis,vagas:parseInt(document.getElementById('jogoVagas').value)||12,valor:parseFloat(document.getElementById('jogoValor').value)||0,professor:document.getElementById('jogoProfessor').value,taxaDiaria:parseFloat(document.getElementById('jogoTaxaDiaria').value)||0,vagasDiaristas:document.getElementById('jogoVagasDiaristas').value,status:'Aberto'};loading(true);const editId=document.getElementById('jogoEditId').value;if(editId){await updateDoc(doc(db,'jogos',editId),dados);const idx=allJogos.findIndex(j=>j.id===editId);if(idx>=0)allJogos[idx]={id:editId,...dados};showToast('✅ Jogo atualizado!');}else{const ref=await addDoc(collection(db,'jogos'),{...dados,criadoEm:serverTimestamp()});allJogos.push({id:ref.id,...dados});showToast('✅ Jogo criado!');}closeModal('modalNovoJogo');renderJogosGerente();await renderGerenteHome();loading(false);};
 window.toggleJogo=async function(id){const j=allJogos.find(x=>x.id===id);const n=j.status==='Aberto'?'Fechado':'Aberto';loading(true);await updateDoc(doc(db,'jogos',id),{status:n});j.status=n;showToast('✅ Status atualizado!');renderJogosGerente();await renderGerenteHome();loading(false);};
 window.toggleDiaristas=async function(id){const j=allJogos.find(x=>x.id===id);const n=j.vagasDiaristas==='sim'?'nao':'sim';loading(true);await updateDoc(doc(db,'jogos',id),{vagasDiaristas:n});j.vagasDiaristas=n;showToast(n==='sim'?'✅ Diaristas abertos!':'✅ Diaristas fechados.');renderJogosGerente();loading(false);};
 window.excluirJogo=async function(id){if(!confirm('Excluir este jogo?'))return;loading(true);await deleteDoc(doc(db,'jogos',id));allJogos=allJogos.filter(j=>j.id!==id);showToast('🗑️ Excluído.');renderJogosGerente();await renderGerenteHome();loading(false);};
@@ -2088,6 +2183,13 @@ function sortJogosPorDia(jogos){
     return(a.nivel||'').localeCompare(b.nivel||'');
   });
 }
+// verifica se membro pode participar do jogo (suporta nivel único e múltiplos)
+function jogoParaMembro(jogo, nivelMembro){
+  if(!nivelMembro) return true;
+  if(Array.isArray(jogo.niveis)) return jogo.niveis.includes(nivelMembro);
+  return jogo.nivel===nivelMembro;
+}
+
 function nomeExib(inscricao){
   const u=allUsers.find(u=>u.uid===inscricao.usuarioId);
   return u?.nomeApresentacao||u?.nome?.split(' ')[0]||inscricao.usuarioNome?.split(' ')[0]||'?';
@@ -2944,6 +3046,327 @@ window.marcarPresencaData=async function(usuarioId,usuarioNome,jogoId,data,confi
 window.marcarPresenca=window.marcarPresencaData; // compatibilidade
 window.aprovarDiarista=async function(id){loading(true);await updateDoc(doc(db,'diaristas',id),{status:'Aprovado'});showToast('✅ Diarista aprovado!');await carregarDiaristas();loading(false);};
 window.rejeitarDiarista=async function(id){loading(true);await updateDoc(doc(db,'diaristas',id),{status:'Rejeitado'});showToast('❌ Diarista rejeitado.');await carregarDiaristas();loading(false);};
+
+// ══════════════════════════════════════════════════
+// PARTIDAS DO DIA
+// Coleção: partidas/{id} — independente das demais
+// ══════════════════════════════════════════════════
+
+let _partidasJogoAtual=null; // jogo selecionado
+let _partidasData=null;       // data de hoje YYYY-MM-DD
+let _partidasParticipantes=[]; // membros disponíveis para montar times
+
+window.initPartidas=function(){
+  const selPeriodo=document.getElementById('partidasPeriodoSel');
+  const selJogo=document.getElementById('partidasJogoSel');
+  _partidasData=dataParaKey(new Date());
+
+  // períodos disponíveis
+  const periodos=[...new Set(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno).map(j=>j.mesAno))].sort().reverse();
+  selPeriodo.innerHTML='<option value="">Selecione o período...</option>'+
+    periodos.map(p=>`<option value="${p}">${p}</option>`).join('');
+
+  // pré-seleciona período vigente
+  const pv=periodoVigente();
+  if(pv&&periodos.includes(pv.nome)) selPeriodo.value=pv.nome;
+
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selJogo.disabled=true;
+  document.getElementById('partidasDiaPanel').innerHTML=
+    '<div class="empty"><i class="ti ti-tournament"></i><p>Selecione o período e o jogo</p></div>';
+
+  if(selPeriodo.value) window.filtrarJogosPartidas();
+};
+
+window.filtrarJogosPartidas=function(){
+  const periodo=document.getElementById('partidasPeriodoSel').value;
+  const selJogo=document.getElementById('partidasJogoSel');
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>';
+  selJogo.disabled=true;
+  document.getElementById('partidasDiaPanel').innerHTML=
+    '<div class="empty"><i class="ti ti-tournament"></i><p>Selecione um jogo</p></div>';
+  if(!periodo) return;
+  // só jogos do tipo Dupla ou Quarteto
+  const jogos=sortJogosPorDia(allJogos.filter(j=>j.status==='Aberto'&&j.mesAno===periodo&&
+    (j.tipo==='Dupla'||j.tipo==='Quarteto')));
+  selJogo.innerHTML='<option value="">Selecione um jogo...</option>'+
+    jogos.map(j=>`<option value="${j.id}">${j.dia} · ${Array.isArray(j.niveis)?j.niveis.join('+'):j.nivel} · ${j.nome} (${j.tipo})</option>`).join('');
+  selJogo.disabled=false;
+};
+
+window.carregarPartidasDia=async function(){
+  const jogoId=document.getElementById('partidasJogoSel').value;
+  if(!jogoId) return;
+  const panel=document.getElementById('partidasDiaPanel');
+  panel.innerHTML='<div class="empty"><i class="ti ti-loader"></i><p>Carregando...</p></div>';
+  loading(true);
+
+  _partidasJogoAtual=allJogos.find(j=>j.id===jogoId);
+  const tipo=_partidasJogoAtual?.tipo||'Dupla';
+  const membrosTime=tipo==='Dupla'?2:4;
+
+  // Busca inscritos confirmados
+  // Para jogos mistos, busca todos os inscritos (qualquer nível)
+  const [inscSnap, confSnap, diarSnap] = await Promise.all([
+    getDocs(query(collection(db,'inscricoes'),where('jogoId','==',jogoId),where('status','==','Aprovado'))),
+    getDocs(query(collection(db,'confirmacoes'),where('jogoId','==',jogoId),where('data','==',_partidasData),where('confirmado','==',true))),
+    tipo==='Quarteto'
+      ? getDocs(query(collection(db,'diaristas'),where('jogoId','==',jogoId),where('status','==','Aprovado'),where('tipo','==','diarista')))
+      : Promise.resolve({docs:[]})
+  ]);
+
+  const inscritosIds=new Set(inscSnap.docs.map(d=>d.data().usuarioId));
+  const confirmadosIds=new Set(confSnap.docs.map(d=>d.data().usuarioId));
+  // Para quarteto: inclui diaristas aprovados também
+  const diaristasIds=new Set(diarSnap.docs.map(d=>d.data().usuarioId));
+
+  // Participantes = confirmados (membros) + diaristas (quarteto)
+  // Se ninguém confirmou ainda, usa todos os inscritos
+  let participantesIds;
+  if(tipo==='Quarteto'){
+    participantesIds=confirmadosIds.size>0
+      ? new Set([...confirmadosIds, ...diaristasIds])
+      : new Set([...inscritosIds, ...diaristasIds]);
+  } else {
+    participantesIds=confirmadosIds.size>0 ? confirmadosIds : inscritosIds;
+  }
+
+  _partidasParticipantes=allUsers
+    .filter(u=>participantesIds.has(u.uid))
+    .map(u=>({uid:u.uid, nome:u.nomeApresentacao||u.nome?.split(' ')[0]||u.uid}))
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+
+  // Busca partidas do dia
+  const partidasSnap=await getDocs(query(collection(db,'partidas'),
+    where('jogoId','==',jogoId),where('data','==',_partidasData)));
+  const partidas=partidasSnap.docs.map(d=>({id:d.id,...d.data()}))
+    .sort((a,b)=>(a.numero||0)-(b.numero||0));
+
+  loading(false);
+  window.renderPartidasDia(partidas, membrosTime, tipo);
+};
+
+window.renderPartidasDia=function(partidas, membrosTime, tipo){
+  const panel=document.getElementById('partidasDiaPanel');
+
+  // Ranking
+  const ranking={}; // uid → {nome, vitorias, pontos}
+  partidas.forEach(p=>{
+    if(p.placarA===undefined||p.placarB===undefined) return;
+    const vencedorTime=p.placarA>p.placarB?'A':'B';
+    [...(p.timeA||[]),...(p.timeB||[])].forEach(uid=>{
+      if(!ranking[uid]){const u=allUsers.find(x=>x.uid===uid);ranking[uid]={nome:u?(u.nomeApresentacao||u.nome?.split(' ')[0]||uid):uid,vitorias:0,pontos:0};}
+    });
+    (p.timeA||[]).forEach(uid=>{
+      if(!ranking[uid]){const u=allUsers.find(x=>x.uid===uid);ranking[uid]={nome:u?(u.nomeApresentacao||u.nome?.split(' ')[0]||uid):uid,vitorias:0,pontos:0};}
+      ranking[uid].pontos+=Number(p.placarA)||0;
+      if(vencedorTime==='A') ranking[uid].vitorias++;
+    });
+    (p.timeB||[]).forEach(uid=>{
+      if(!ranking[uid]){const u=allUsers.find(x=>x.uid===uid);ranking[uid]={nome:u?(u.nomeApresentacao||u.nome?.split(' ')[0]||uid):uid,vitorias:0,pontos:0};}
+      ranking[uid].pontos+=Number(p.placarB)||0;
+      if(vencedorTime==='B') ranking[uid].vitorias++;
+    });
+  });
+
+  const rankingArr=Object.values(ranking).sort((a,b)=>b.vitorias-a.vitorias||b.pontos-a.pontos);
+
+  let html='';
+
+  // Botão criar partida
+  html+=`<button class="btn-sm pr" style="width:100%;justify-content:center;margin-bottom:14px"
+    onclick="window.abrirModalNovaPartida(${membrosTime},'${tipo}')">
+    <i class="ti ti-plus"></i> Nova partida
+  </button>`;
+
+  // Lista de partidas
+  if(!partidas.length){
+    html+='<div class="empty" style="padding:20px"><i class="ti ti-tournament"></i><p>Nenhuma partida criada ainda.<br>Clique em "Nova partida" para começar!</p></div>';
+  } else {
+    html+=partidas.map((p,i)=>{
+      const getNomePartida=uid=>{const u=allUsers.find(u=>u.uid===uid);return u?(u.nomeApresentacao||u.nome?.split(' ')[0]||uid):uid;};
+      const nomeTimeA=(p.timeA||[]).map(getNomePartida).join(' + ');
+      const nomeTimeB=(p.timeB||[]).map(getNomePartida).join(' + ');
+      const temPlacar=p.placarA!==undefined&&p.placarB!==undefined;
+      const vencA=temPlacar&&p.placarA>p.placarB;
+      const vencB=temPlacar&&p.placarB>p.placarA;
+      return`<div class="card" style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;margin-bottom:8px">Partida ${p.numero||i+1}</div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+          <div style="text-align:center">
+            <div style="font-size:13px;font-weight:${vencA?'700':'400'};color:${vencA?'#0F6E56':'var(--tx)'}">
+              ${nomeTimeA}
+            </div>
+          </div>
+          <div style="text-align:center;min-width:60px">
+            ${temPlacar
+              ?`<div style="font-size:22px;font-weight:700;color:var(--tx)">${p.placarA} × ${p.placarB}</div>`
+              :`<div style="font-size:12px;color:var(--tx2)">vs</div>`}
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:13px;font-weight:${vencB?'700':'400'};color:${vencB?'#0F6E56':'var(--tx)'}">
+              ${nomeTimeB}
+            </div>
+          </div>
+        </div>
+        <button class="btn-sm" style="width:100%;justify-content:center;margin-top:10px;${temPlacar?'background:#E6F7EF;color:#0F6E56':'background:var(--or);color:#fff;border-color:var(--or)'}"
+          onclick="window.abrirModalPlacar('${p.id}','${nomeTimeA}','${nomeTimeB}',${p.placarA??'undefined'},${p.placarB??'undefined'})">
+          <i class="ti ti-${temPlacar?'edit':'checkup-list'}"></i> ${temPlacar?'Editar placar':'Registrar placar'}
+        </button>
+        <button class="btn-sm no" style="width:100%;justify-content:center;margin-top:6px;font-size:11px" onclick="window.excluirPartida('${p.id}')"><i class="ti ti-trash"></i> Excluir partida</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Ranking
+  if(rankingArr.length){
+    html+=`<div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">
+      🏆 Ranking do dia
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">`;
+    html+=rankingArr.map((r,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd)">
+        <div style="font-size:16px;font-weight:700;color:${i===0?'#EF9F27':i===1?'#aaa':i===2?'#cd7f32':'var(--tx2)'};min-width:24px">${i+1}º</div>
+        <div style="flex:1;font-size:13px;font-weight:500">${r.nome}</div>
+        <div style="font-size:12px;color:#0F6E56;font-weight:600">${r.vitorias}V</div>
+        <div style="font-size:12px;color:var(--tx2);margin-left:8px">${r.pontos}pts</div>
+      </div>`).join('');
+    html+=`</div>`;
+  }
+
+  panel.innerHTML=html;
+};
+
+window.abrirModalNovaPartida=function(membrosTime, tipo){
+  document.getElementById('labelTime1').textContent=tipo==='Dupla'?'Dupla 1 (2 jogadores)':'Quarteto 1 (4 jogadores)';
+  document.getElementById('labelTime2').textContent=tipo==='Dupla'?'Dupla 2 (2 jogadores)':'Quarteto 2 (4 jogadores)';
+
+  const checkboxes=_partidasParticipantes.map(p=>
+    `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer">
+      <input type="checkbox" class="part-check" value="${p.uid}" style="width:16px;height:16px"> ${p.nome}
+    </label>`).join('');
+
+  document.getElementById('seletorTime1').innerHTML=`<div style="background:var(--sur2);border-radius:9px;padding:10px 14px">${checkboxes}</div>
+    <div style="font-size:11px;color:var(--tx2);margin-top:4px">Selecione ${membrosTime} jogadores</div>`;
+  document.getElementById('seletorTime2').innerHTML=`<div style="background:var(--sur2);border-radius:9px;padding:10px 14px">${checkboxes.replace(/class="part-check"/g,'class="part-check2"')}</div>
+    <div style="font-size:11px;color:var(--tx2);margin-top:4px">Selecione ${membrosTime} jogadores</div>`;
+
+  // guarda membrosTime no modal para uso em criarPartida
+  document.getElementById('modalNovaPartida').dataset.membrosTime=membrosTime;
+  document.getElementById('modalNovaPartida').dataset.tipo=tipo;
+  document.getElementById('modalNovaPartida').classList.add('open');
+};
+
+window.criarPartida=async function(){
+  const membrosTime=Number(document.getElementById('modalNovaPartida').dataset.membrosTime);
+  const timeA=[...document.querySelectorAll('.part-check:checked')].map(c=>c.value);
+  const timeB=[...document.querySelectorAll('.part-check2:checked')].map(c=>c.value);
+
+  if(timeA.length!==membrosTime){showToast(`⚠️ Selecione exatamente ${membrosTime} jogadores para o Time 1`);return;}
+  if(timeB.length!==membrosTime){showToast(`⚠️ Selecione exatamente ${membrosTime} jogadores para o Time 2`);return;}
+
+  // Verifica se algum jogador está nos dois times
+  const intersec=timeA.filter(uid=>timeB.includes(uid));
+  if(intersec.length){showToast('⚠️ Um jogador não pode estar nos dois times');return;}
+
+  loading(true);
+  // Conta partidas existentes para numerar
+  const existSnap=await getDocs(query(collection(db,'partidas'),
+    where('jogoId','==',_partidasJogoAtual.id),where('data','==',_partidasData)));
+  const numero=existSnap.docs.length+1;
+
+  await addDoc(collection(db,'partidas'),{
+    jogoId:_partidasJogoAtual.id,
+    jogoNome:_partidasJogoAtual.nome,
+    data:_partidasData,
+    periodo:_partidasJogoAtual.mesAno||'',
+    tipo:_partidasJogoAtual.tipo,
+    numero,
+    timeA,
+    timeB,
+    criadoPor:currentUID,
+    criadoEm:serverTimestamp()
+  });
+
+  closeModal('modalNovaPartida');
+  showToast('✅ Partida criada!');
+  await window.carregarPartidasDia();
+  loading(false);
+};
+
+window.abrirModalPlacar=function(partidaId, nomeA, nomeB, placarAAtual, placarBAtual){
+  document.getElementById('placarConteudo').innerHTML=`
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--tx2);margin-bottom:4px">Resultado — 1 set · vence quem chegar a 15 (vantagem de 2)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:20px">
+      <div style="text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">${nomeA}</div>
+        <input id="placarA" type="number" min="0" value="${placarAAtual!==undefined?placarAAtual:''}"
+          placeholder="0" style="width:100%;text-align:center;font-size:28px;font-weight:700;padding:10px;border:2px solid var(--bd);border-radius:10px;color:var(--tx)">
+      </div>
+      <div style="font-size:20px;color:var(--tx2);font-weight:300">×</div>
+      <div style="text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">${nomeB}</div>
+        <input id="placarB" type="number" min="0" value="${placarBAtual!==undefined?placarBAtual:''}"
+          placeholder="0" style="width:100%;text-align:center;font-size:28px;font-weight:700;padding:10px;border:2px solid var(--bd);border-radius:10px;color:var(--tx)">
+      </div>
+    </div>
+    <div style="background:#E8F3FE;border-radius:9px;padding:8px 12px;font-size:11px;color:#185FA5;margin-bottom:12px;line-height:1.5">
+      Vence com 15pts e vantagem de 2. Em 14×14: vence 16×14. Em 15×15: vence 17×15, e assim por diante.
+    </div>
+    <button onclick="window.salvarPlacar('${partidaId}')"
+      style="width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer">
+      <i class="ti ti-device-floppy"></i> Salvar placar
+    </button>`;
+  document.getElementById('modalPlacar').classList.add('open');
+};
+
+window.salvarPlacar=async function(partidaId){
+  const pA=parseInt(document.getElementById('placarA').value);
+  const pB=parseInt(document.getElementById('placarB').value);
+  if(isNaN(pA)||isNaN(pB)){showToast('⚠️ Informe os dois placares');return;}
+  if(pA<0||pB<0){showToast('⚠️ Placar não pode ser negativo');return;}
+  if(pA===pB){showToast('⚠️ Empate não é possível no vôlei');return;}
+
+  const maior=Math.max(pA,pB);
+  const menor=Math.min(pA,pB);
+  const diff=maior-menor;
+
+  // Regra: vence com 15+ E diferença de 2
+  // Antes de 14×14: vence quem chegar a 15 (diferença pode ser > 2)
+  // Em deuce (>=14×14): precisa de 2 de vantagem
+  const emDeuce=menor>=14;
+  if(emDeuce){
+    // precisa de exatamente 2 de diferença (ou mais, mas sempre par a partir de deuce)
+    if(diff<2){showToast('⚠️ Em deuce precisa de 2 pontos de vantagem');return;}
+    if(diff%2!==0){showToast('⚠️ Placar inválido — diferença deve ser de 2 em 2 em deuce');return;}
+  }else{
+    // antes do deuce: vencedor tem exatamente 15
+    if(maior<15){showToast('⚠️ Vencedor precisa ter pelo menos 15 pontos');return;}
+    if(maior>15&&menor<14){showToast('⚠️ Placar inválido');return;}
+  }
+
+  loading(true);
+  await updateDoc(doc(db,'partidas',partidaId),{
+    placarA:pA, placarB:pB,
+    registradoPor:currentUID,
+    registradoEm:serverTimestamp()
+  });
+  closeModal('modalPlacar');
+  showToast('✅ Placar registrado!');
+  await window.carregarPartidasDia();
+  loading(false);
+};
+
+window.excluirPartida=async function(partidaId){
+  if(!confirm('Excluir esta partida?'))return;
+  loading(true);
+  await deleteDoc(doc(db,'partidas',partidaId));
+  showToast('🗑️ Partida excluída');
+  await window.carregarPartidasDia();
+  loading(false);
+};
 
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
 </script>
